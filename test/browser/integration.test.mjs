@@ -31,7 +31,7 @@ function render(page, id, source) {
       roleColour: outline('clerk'),
       applicationColour: outline('oms'),
       assignment: line('clerk_to_fulfil'),
-      access: line('reads'),
+      access: line('manage__access__order'),
       markerIds: Array.from(document.querySelectorAll('marker'), (marker) => marker.id),
     };
   }, { id, source });

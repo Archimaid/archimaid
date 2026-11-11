@@ -9,7 +9,7 @@ archimate-beta
   element dataObject order "Order record"
   description order "Details of a paid order."
 
-  relationship assignment manages oms -> manage
-  relationship realization provides manage -> orders
-  relationship serving supports orders -> fulfil
-  relationship access reads manage -> order access read
+  oms @==> manage
+  manage ..|> orders
+  orders --> fulfil
+  manage <.. order

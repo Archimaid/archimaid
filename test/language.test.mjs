@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { relationshipTypes } from '../dist/archimate/catalogue.js';
-import { ArchiMateError, parseArchiMate } from '../dist/archimate/parser.js';
+import { ArchiMateError, parseArchiMate, relationshipConnectors } from '../dist/archimate/parser.js';
 
 test('parses forward references, comments, CRLF, metadata and quoted Unicode text', () => {
   const diagram = [
@@ -191,6 +191,108 @@ test('rejects invalid nesting direction, relation type, and containment cycles',
   ]) {
     assert.throws(
       () => parseArchiMate([...declarations, ...nesting].join('\n')),
+      (error) => error instanceof ArchiMateError
+        && error.code === 'INVALID_NESTING' && message.test(error.detail),
+    );
+  }
+});
+
+test('connector shorthand covers every relationship type, access mode and association direction', () => {
+  const connectors = Object.keys(relationshipConnectors);
+  const model = parseArchiMate([
+    'archimate-beta',
+    'element applicationComponent a "A"',
+    'element dataObject b "B"',
+    ...connectors.map((glyph) => 'a ' + glyph + ' b'),
+  ].join('\n'));
+
+  assert.deepEqual(
+    new Set(model.relationships.map(({ type }) => type)),
+    new Set(relationshipTypes),
+  );
+  assert.deepEqual(
+    model.relationships.filter(({ type }) => type === 'access').map(({ access }) => access),
+    [undefined, 'read', 'write', 'readWrite'],
+  );
+  assert.deepEqual(
+    model.relationships.filter(({ type }) => type === 'association').map(({ directed }) => directed),
+    [undefined, true],
+  );
+  assert.ok(model.relationships.every(({ source, target }) => source === 'a' && target === 'b'));
+});
+
+test('connector shorthand matches the long form and generates unique, stable IDs', () => {
+  const model = parseArchiMate([
+    'archimate-beta',
+    'element applicationFunction manage "Manage orders"',
+    'element dataObject order "Order record"',
+    'element dataObject manage__access__order "Collides with a generated ID"',
+    'manage <.. order : "Reads order record"',
+    'manage <.. order',
+    'relationship access reads manage -> order access read label "Reads order record"',
+  ].join('\n'));
+
+  assert.deepEqual(model.relationships, [
+    { id: 'manage__access__order_2', type: 'access', source: 'manage', target: 'order', access: 'read', label: 'Reads order record' },
+    { id: 'manage__access__order_3', type: 'access', source: 'manage', target: 'order', access: 'read' },
+    { id: 'reads', type: 'access', source: 'manage', target: 'order', access: 'read', label: 'Reads order record' },
+  ]);
+});
+
+test('connector shorthand tokenizes hyphenated IDs, unspaced glyphs and metadata-like IDs', () => {
+  const model = parseArchiMate([
+    'archimate-beta',
+    'title: Orders',
+    'element businessObject order-item "Order item"',
+    'element businessObject o "O"',
+    'element businessObject title "Title"',
+    'order-item-->o',
+    'o---order-item',
+    'o o-- title : "contains"',
+    'title-.->o',
+  ].join('\n'));
+
+  assert.equal(model.title, 'Orders');
+  assert.deepEqual(
+    model.relationships.map(({ type, source, target, label }) => [type, source, target, label]),
+    [
+      ['serving', 'order-item', 'o', undefined],
+      ['association', 'o', 'order-item', undefined],
+      ['aggregation', 'o', 'title', 'contains'],
+      ['influence', 'title', 'o', undefined],
+    ],
+  );
+});
+
+test('connector shorthand reports unknown endpoints and unknown glyphs at their location', () => {
+  assert.throws(
+    () => parseArchiMate('archimate-beta\nelement node server "Server"\nserver --> missing'),
+    (error) => error instanceof ArchiMateError
+      && error.code === 'UNKNOWN_ELEMENT' && error.line === 3 && error.column === 12,
+  );
+  assert.throws(
+    () => parseArchiMate('archimate-beta\nelement node a "A"\nelement node b "B"\na -- b'),
+    (error) => error instanceof ArchiMateError && error.code === 'LEXICAL_ERROR' && error.line === 4,
+  );
+});
+
+test('infers the nesting relationship when "via" is omitted and rejects ambiguity', () => {
+  const declarations = [
+    'archimate-beta',
+    'element applicationComponent suite "Operations suite"',
+    'element applicationComponent billing "Billing"',
+    'suite *-- billing',
+    'nest billing in suite',
+  ];
+  assert.deepEqual(parseArchiMate(declarations.join('\n')).nesting, [
+    { child: 'billing', parent: 'suite', relationship: 'suite__composition__billing' },
+  ]);
+  for (const [extra, message] of [
+    [['suite o-- billing'], /Several relationships/],
+    [['nest suite in billing'], /No relationship supports/],
+  ]) {
+    assert.throws(
+      () => parseArchiMate([...declarations.slice(0, 3), ...extra, ...declarations.slice(3)].join('\n')),
       (error) => error instanceof ArchiMateError
         && error.code === 'INVALID_NESTING' && message.test(error.detail),
     );

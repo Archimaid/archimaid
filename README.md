@@ -50,6 +50,30 @@ archimate-beta
 
 Add element details with `description elementId "Text"` and a visible relationship label with `label "Text"` after the relationship's endpoints and options.
 
+### Relationship shorthand
+
+Write `source <connector> target` to declare a relationship without an ID. Add `: "Text"` for a visible label. The left endpoint is always the model source, so `manage <.. order` means *manage reads order*. The connector mirrors the rendered markers.
+
+| Relationship | Connector | Long form equivalent |
+| --- | --- | --- |
+| Composition | `a *-- b` | `relationship composition id a -> b` |
+| Aggregation | `a o-- b` | `relationship aggregation id a -> b` |
+| Assignment | `a @==> b` | `relationship assignment id a -> b` |
+| Realization | `a ..\|> b` | `relationship realization id a -> b` |
+| Serving | `a --> b` | `relationship serving id a -> b` |
+| Access | `a .. b` | `relationship access id a -> b` |
+| Access, read | `a <.. b` | `... a -> b access read` |
+| Access, write | `a ..> b` | `... a -> b access write` |
+| Access, read/write | `a <..> b` | `... a -> b access readWrite` |
+| Influence | `a -.-> b` | `relationship influence id a -> b` |
+| Association | `a --- b` | `relationship association id a -> b` |
+| Association, directed | `a --/ b` | `... a -> b directed` |
+| Triggering | `a ==> b` | `relationship triggering id a -> b` |
+| Flow | `a -.=> b` | `relationship flow id a -> b` |
+| Specialization | `a --\|> b` | `relationship specialization id a -> b` |
+
+`..` is a dotted line and `-.` a dashed one. `>` is an open arrowhead, `=>` a filled one, `|>` a hollow triangle, and `/` the single barb of a directed Association. Shorthand relationships receive generated IDs of the form `source__type__target`. Use the long form when another declaration must reference the relationship by ID.
+
 | Example | What it shows | Files |
 | --- | --- | --- |
 | Order fulfilment | A Business Role assigned to a Business Process | [Source](examples/order-fulfilment.mmd) |
@@ -70,7 +94,7 @@ Use `layout graph` for a relationship-driven layout. Graph layout accepts `direc
 
 ### Nest elements and add notes
 
-Declare a relationship and give its ID to `nest child in parent via relationshipId`.
+Declare a relationship and give its ID to `nest child in parent via relationshipId`. Omit `via relationshipId` when exactly one relationship between the two elements supports the nesting, as with a shorthand relationship.
 
 ```text
 archimate-beta

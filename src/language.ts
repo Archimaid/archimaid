@@ -1,4 +1,4 @@
-export { parseArchiMate, ArchiMateError } from './archimate/parser.js';
+export { parseArchiMate, ArchiMateError, relationshipConnectors } from './archimate/parser.js';
 export type { ArchiMateErrorCode, ArchiMateParseOptions } from './archimate/parser.js';
 export {
   elementTypes,

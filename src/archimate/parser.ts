@@ -1,7 +1,7 @@
 import { CstParser, createToken, EOF, Lexer } from 'chevrotain';
-import type { CstNode, IToken } from 'chevrotain';
+import type { CstNode, IToken, TokenType } from 'chevrotain';
 import { getElementType, getRelationshipNotation } from './catalogue.js';
-import type { AccessMode } from './catalogue.js';
+import type { AccessMode, RelationshipType } from './catalogue.js';
 import type {
   ArchiMateDirection,
   ArchiMateLayout,
@@ -14,7 +14,23 @@ import type {
 const space = createToken({ name: 'Space', pattern: /[ \t]+/, group: Lexer.SKIPPED });
 const comment = createToken({ name: 'Comment', pattern: /%%[^\r\n]*/, group: Lexer.SKIPPED });
 const newline = createToken({ name: 'Newline', pattern: /\r\n|\r|\n/, line_breaks: true });
-const metadata = createToken({ name: 'Metadata', pattern: /(?:title|accTitle|accDescr)[ \t]*:[^\r\n]*/ });
+const metadataPattern = /(?:title|accTitle|accDescr)[ \t]*:[^\r\n]*/y;
+
+// Metadata only starts a line, so an element named "title" can still precede a ": label".
+function matchMetadata(text: string, offset: number): RegExpExecArray | null {
+  for (let index = offset - 1; index >= 0 && text[index] !== '\n' && text[index] !== '\r'; index--) {
+    if (text[index] !== ' ' && text[index] !== '\t') return null;
+  }
+  metadataPattern.lastIndex = offset;
+  return metadataPattern.exec(text);
+}
+
+const metadata = createToken({
+  name: 'Metadata',
+  pattern: { exec: matchMetadata },
+  line_breaks: false,
+  start_chars_hint: ['t', 'a'],
+});
 const quoted = createToken({
   name: 'QuotedText',
   pattern: /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"/,
@@ -22,7 +38,8 @@ const quoted = createToken({
   label: 'quoted text',
 });
 const arrow = createToken({ name: 'Arrow', pattern: /->/, label: '"->"' });
-const identifier = createToken({ name: 'Identifier', pattern: /[a-zA-Z_](?:[\w]|-(?!>))*/, label: 'identifier' });
+const colon = createToken({ name: 'Colon', pattern: /:/, label: '":"' });
+const identifier = createToken({ name: 'Identifier', pattern: /[a-zA-Z_]\w*(?:-\w+)*/, label: 'identifier' });
 const header = createToken({ name: 'Header', pattern: /archimate-beta(?![\w-])/, categories: identifier });
 
 function keyword(name: string, text: string) {
@@ -43,9 +60,48 @@ const nest = keyword('Nest', 'nest');
 const inside = keyword('In', 'in');
 const via = keyword('Via', 'via');
 
+interface ConnectorNotation {
+  readonly type: RelationshipType;
+  readonly access?: AccessMode;
+  readonly directed?: true;
+}
+
+// The left endpoint is always the model source; glyphs mirror the rendered markers.
+export const relationshipConnectors = {
+  '*--': { type: 'composition' },
+  'o--': { type: 'aggregation' },
+  '@==>': { type: 'assignment' },
+  '..|>': { type: 'realization' },
+  '-->': { type: 'serving' },
+  '..': { type: 'access', access: 'unspecified' },
+  '<..': { type: 'access', access: 'read' },
+  '..>': { type: 'access', access: 'write' },
+  '<..>': { type: 'access', access: 'readWrite' },
+  '-.->': { type: 'influence' },
+  '---': { type: 'association' },
+  '--/': { type: 'association', directed: true },
+  '==>': { type: 'triggering' },
+  '-.=>': { type: 'flow' },
+  '--|>': { type: 'specialization' },
+} as const satisfies Record<string, ConnectorNotation>;
+
+const connector = createToken({ name: 'Connector', pattern: Lexer.NA, label: 'relationship connector' });
+const connectorNotations = new Map<TokenType, ConnectorNotation>();
+const connectorTokens = Object.entries(relationshipConnectors)
+  .sort(([left], [right]) => right.length - left.length)
+  .map(([glyph, notation], index) => {
+    const escaped = glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+    // "o--" must not split identifiers such as "o-->target" or "o---target".
+    const pattern = new RegExp(glyph === 'o--' ? escaped + '(?![->|/])' : escaped);
+    const token = createToken({ name: 'Connector' + index, pattern, label: '"' + glyph + '"', categories: connector });
+    connectorNotations.set(token, notation);
+    return token;
+  });
+
 const tokens = [
-  space, comment, newline, header, metadata, quoted, arrow, direction, layout, element,
-  description, relationship, access, directed, label, note, on, nest, inside, via, identifier,
+  space, comment, newline, header, metadata, quoted, connector, ...connectorTokens, arrow, colon,
+  direction, layout, element, description, relationship, access, directed, label, note, on, nest,
+  inside, via, identifier,
 ];
 const lexer = new Lexer(tokens);
 
@@ -58,7 +114,7 @@ class ArchiMateParser extends CstParser {
       this.OPTION(() => this.SUBRULE(this.statement));
     });
     this.CONSUME(EOF, {
-      ERR_MSG: 'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, note, nest, or metadata).',
+      ERR_MSG: 'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, or metadata).',
     });
   });
 
@@ -72,7 +128,18 @@ class ArchiMateParser extends CstParser {
       { ALT: () => this.SUBRULE(this.noteStatement) },
       { ALT: () => this.SUBRULE(this.nestingStatement) },
       { ALT: () => this.SUBRULE(this.metadataStatement) },
+      { ALT: () => this.SUBRULE(this.connectorStatement) },
     ]);
+  });
+
+  private readonly connectorStatement = this.RULE('connectorStatement', () => {
+    this.CONSUME(identifier, { LABEL: 'source' });
+    this.CONSUME(connector, { LABEL: 'connector' });
+    this.CONSUME2(identifier, { LABEL: 'target' });
+    this.OPTION(() => {
+      this.CONSUME(colon);
+      this.CONSUME(quoted, { LABEL: 'labelText' });
+    });
   });
 
   private readonly directionStatement = this.RULE('directionStatement', () => {
@@ -135,8 +202,10 @@ class ArchiMateParser extends CstParser {
     this.CONSUME(identifier, { LABEL: 'child' });
     this.CONSUME(inside);
     this.CONSUME2(identifier, { LABEL: 'parent' });
-    this.CONSUME(via);
-    this.CONSUME3(identifier, { LABEL: 'relationshipId' });
+    this.OPTION(() => {
+      this.CONSUME(via);
+      this.CONSUME3(identifier, { LABEL: 'relationshipId' });
+    });
   });
 
   constructor() {
@@ -153,8 +222,9 @@ type Declaration =
   | { kind: 'element'; type: IToken; id: IToken; name: IToken }
   | { kind: 'description'; id: IToken; value: IToken }
   | { kind: 'note'; id: IToken; text: IToken; anchor?: IToken }
-  | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId: IToken }
-  | RelationshipDeclaration;
+  | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId?: IToken }
+  | RelationshipDeclaration
+  | ConnectorDeclaration;
 
 interface RelationshipDeclaration {
   kind: 'relationship';
@@ -164,6 +234,14 @@ interface RelationshipDeclaration {
   target: IToken;
   mode?: IToken;
   directed?: IToken;
+  label?: IToken;
+}
+
+interface ConnectorDeclaration {
+  kind: 'connector';
+  source: IToken;
+  connector: IToken;
+  target: IToken;
   label?: IToken;
 }
 
@@ -229,6 +307,16 @@ class DeclarationVisitor extends BaseVisitor {
     };
   }
 
+  connectorStatement(ctx: Context): Declaration {
+    return {
+      kind: 'connector',
+      source: requiredToken(ctx, 'source'),
+      connector: requiredToken(ctx, 'connector'),
+      target: requiredToken(ctx, 'target'),
+      ...(ctx.labelText && { label: requiredToken(ctx, 'labelText') }),
+    };
+  }
+
   metadataStatement(ctx: Context): Declaration {
     return { kind: 'metadata', value: requiredToken(ctx, 'Metadata') };
   }
@@ -247,7 +335,7 @@ class DeclarationVisitor extends BaseVisitor {
       kind: 'nesting',
       child: requiredToken(ctx, 'child'),
       parent: requiredToken(ctx, 'parent'),
-      relationshipId: requiredToken(ctx, 'relationshipId'),
+      ...(ctx.relationshipId && { relationshipId: requiredToken(ctx, 'relationshipId') }),
     };
   }
 }
@@ -337,6 +425,52 @@ const parentToChildNestingTypes = new Set([
   'composition', 'aggregation', 'assignment', 'realization', 'access',
 ]);
 
+function supportsNesting(entry: ArchiMateRelationship, child: string, parent: string): boolean {
+  return entry.type === 'specialization'
+    ? entry.source === child && entry.target === parent
+    : parentToChildNestingTypes.has(entry.type) && entry.source === parent && entry.target === child;
+}
+
+function findNestingRelationship(
+  statement: NestingDeclaration,
+  token: IToken,
+  relationshipsById: ReadonlyMap<string, ArchiMateRelationship>,
+  fail: Fail,
+): ArchiMateRelationship {
+  const child = statement.child.image;
+  const parent = statement.parent.image;
+  const found = relationshipsById.get(token.image);
+  if (!found) return fail('INVALID_NESTING', token, 'Unknown relationship "' + token.image + '".');
+  if (!supportsNesting(found, child, parent)) {
+    fail(
+      'INVALID_NESTING',
+      token,
+      'Relationship "' + token.image + '" does not support nesting "' + child + '" in "' + parent + '".',
+    );
+  }
+  return found;
+}
+
+function inferNestingRelationship(
+  statement: NestingDeclaration,
+  relationships: readonly ArchiMateRelationship[],
+  fail: Fail,
+): ArchiMateRelationship {
+  const child = statement.child.image;
+  const parent = statement.parent.image;
+  const candidates = relationships.filter((entry) => supportsNesting(entry, child, parent));
+  const [only] = candidates;
+  if (only && candidates.length === 1) return only;
+  return fail(
+    'INVALID_NESTING',
+    statement.parent,
+    candidates.length === 0
+      ? 'No relationship supports nesting "' + child + '" in "' + parent + '".'
+      : 'Several relationships can nest "' + child + '" in "' + parent
+        + '". Declare the intended one with an ID and add "via <relationship-id>".',
+  );
+}
+
 function validateNesting(
   declarations: readonly NestingDeclaration[],
   entities: ReadonlyMap<string, EntityDeclaration>,
@@ -350,7 +484,6 @@ function validateNesting(
   const nesting = declarations.map((statement) => {
     const child = statement.child.image;
     const parent = statement.parent.image;
-    const relationshipId = statement.relationshipId.image;
     for (const token of [statement.child, statement.parent]) {
       if (entities.get(token.image)?.kind !== 'element') {
         fail('INVALID_NESTING', token, 'Nesting requires an ArchiMate element. Found "' + token.image + '".');
@@ -362,22 +495,11 @@ function validateNesting(
     if (parents.has(child)) {
       fail('INVALID_NESTING', statement.child, 'Element "' + child + '" already has a nesting parent.');
     }
-    const entry = relationshipsById.get(relationshipId);
-    if (!entry) {
-      return fail('INVALID_NESTING', statement.relationshipId, 'Unknown relationship "' + relationshipId + '".');
-    }
-    const valid = entry.type === 'specialization'
-      ? entry.source === child && entry.target === parent
-      : parentToChildNestingTypes.has(entry.type) && entry.source === parent && entry.target === child;
-    if (!valid) {
-      fail(
-        'INVALID_NESTING',
-        statement.relationshipId,
-        'Relationship "' + relationshipId + '" does not support nesting "' + child + '" in "' + parent + '".',
-      );
-    }
+    const entry = statement.relationshipId
+      ? findNestingRelationship(statement, statement.relationshipId, relationshipsById, fail)
+      : inferNestingRelationship(statement, relationships, fail);
     parents.set(child, statement);
-    return { child, parent, relationship: relationshipId };
+    return { child, parent, relationship: entry.id };
   });
 
   const checked = new Set<string>();
@@ -405,7 +527,7 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
   const entities = new Map<string, EntityDeclaration>();
   const descriptions = new Map<string, DescriptionDeclaration>();
   const elementDeclarations: ElementDeclaration[] = [];
-  const relationshipDeclarations: RelationshipDeclaration[] = [];
+  const relationshipDeclarations: (RelationshipDeclaration | ConnectorDeclaration)[] = [];
   const noteDeclarations: NoteDeclaration[] = [];
   const nestingDeclarations: NestingDeclaration[] = [];
 
@@ -458,6 +580,9 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
           noteDeclarations.push(statement);
         }
         break;
+      case 'connector':
+        relationshipDeclarations.push(statement);
+        break;
       case 'nesting':
         nestingDeclarations.push(statement);
         break;
@@ -490,7 +615,33 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
     return entity;
   }
 
+  const usedIds = new Set(entities.keys());
+  function generatedRelationshipId(source: string, type: string, target: string): string {
+    const base = source + '__' + type + '__' + target;
+    let id = base;
+    for (let suffix = 2; usedIds.has(id); suffix++) id = base + '_' + suffix;
+    usedIds.add(id);
+    return id;
+  }
+
+  function connectorRelationship(statement: ConnectorDeclaration): ArchiMateRelationship {
+    const notation = connectorNotations.get(statement.connector.tokenType);
+    if (!notation) throw new Error('Unknown ArchiMate connector token "' + statement.connector.image + '".');
+    const source = endpoint(statement.source).id.image;
+    const target = endpoint(statement.target).id.image;
+    return {
+      id: generatedRelationshipId(source, notation.type, target),
+      type: notation.type,
+      source,
+      target,
+      ...(notation.access && notation.access !== 'unspecified' && { access: notation.access }),
+      ...(notation.directed && { directed: true }),
+      ...(statement.label && { label: readQuotedText(statement.label, fail) }),
+    };
+  }
+
   const relationships: ArchiMateRelationship[] = relationshipDeclarations.map((statement) => {
+    if (statement.kind === 'connector') return connectorRelationship(statement);
     const type = statement.type.image;
     if (!getRelationshipNotation(type)) {
       fail('UNKNOWN_RELATIONSHIP_TYPE', statement.type, 'Unknown relationship type "' + type + '".');
