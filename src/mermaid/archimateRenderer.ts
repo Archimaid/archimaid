@@ -3,14 +3,16 @@ import type { MermaidConfig } from "mermaid";
 import {
   getElementType,
   getRelationshipNotation,
-  relationshipStroke,
 } from "../archimate/catalogue.js";
 import type { ArchiMateModel, ArchiMateNote } from "../archimate/model.js";
-import { elementColours, locationColours, noteColours } from "./styles.js";
+import type { ArchiMatePluginOptions } from "./archimateDetector.js";
+import { archimatePalettes, resolveDiagramColours, type DiagramColours, type PaletteColours } from "./styles.js";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
-const paper = "#ffffff";
-const padding = 24;
+const layoutPadding = 24;
+const strokeGutter = 2;
+// Allow for the longest marker and its outline on low-padding diagrams.
+const markerReach = 14;
 const fontSize = 14;
 const cornerRadius = 9;
 const iconSize = 14;
@@ -149,7 +151,7 @@ function drawText(
   className: string,
   centerX: number,
   centerY: number,
-  colour = "#1b1b1b",
+  colour: string,
 ): void {
   const label = append(parent, "text", {
     class: className,
@@ -183,6 +185,7 @@ function drawNode(
   { element, type, notation, label }: NodeAppearance,
   box: PositionedNode,
   compound: boolean,
+  palette: PaletteColours,
 ): void {
   const { x, y, width, height } = box;
   const group = append(graph, "g", {
@@ -196,7 +199,7 @@ function drawNode(
     append(group, "desc").textContent = element.description;
   }
 
-  const colours = element.type === "location" ? locationColours : elementColours[type.category];
+  const colours = element.type === "location" ? palette.location : palette.elements[type.category];
   const stroke: SvgAttributes = {
     class: "archimate-outline",
     fill: colours.fill,
@@ -242,7 +245,12 @@ function drawNode(
   drawText(group, label, labelClass, width / 2, labelY, colours.text);
 }
 
-function drawNote(graph: SVGGElement, { note, label }: NoteAppearance, box: PositionedNode): void {
+function drawNote(
+  graph: SVGGElement,
+  { note, label }: NoteAppearance,
+  box: PositionedNode,
+  noteColours: PaletteColours["note"],
+): void {
   const { x, y, width, height } = box;
   const group = append(graph, "g", {
     transform: `translate(${x} ${y})`,
@@ -273,16 +281,16 @@ function drawNote(graph: SVGGElement, { note, label }: NoteAppearance, box: Posi
 }
 
 const markerShapes = {
-  filledDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: relationshipStroke },
-  openDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: paper },
-  filledDot: { d: "M 0 0 a 3.5 3.5 0 1 0 -7 0 a 3.5 3.5 0 1 0 7 0 Z", fill: relationshipStroke },
+  filledDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: "relationship" },
+  openDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: "canvas" },
+  filledDot: { d: "M 0 0 a 3.5 3.5 0 1 0 -7 0 a 3.5 3.5 0 1 0 7 0 Z", fill: "relationship" },
   openArrow: { d: "M -8 -4 0 0 -8 4", fill: "none" },
-  filledArrow: { d: "M 0 0 -9 -4 -9 4 Z", fill: relationshipStroke },
-  openTriangle: { d: "M 0 0 -10 -5 -10 5 Z", fill: paper },
+  filledArrow: { d: "M 0 0 -9 -4 -9 4 Z", fill: "relationship" },
+  openTriangle: { d: "M 0 0 -10 -5 -10 5 Z", fill: "canvas" },
   singleBarb: { d: "M -8 -4 0 0", fill: "none" },
-} satisfies Record<Marker, { d: string; fill: string }>;
+} satisfies Record<Marker, { d: string; fill: "relationship" | "canvas" | "none" }>;
 
-function markerReference(defs: SVGDefsElement, prefix: string, marker: Marker): string {
+function markerReference(defs: SVGDefsElement, prefix: string, marker: Marker, colours: DiagramColours): string {
   const id = `${prefix}-${marker}`;
   if (!defs.querySelector(`#${id}`)) {
     const element = append(defs, "marker", {
@@ -295,9 +303,16 @@ function markerReference(defs: SVGDefsElement, prefix: string, marker: Marker): 
       refX: 0,
       refY: 0,
     });
+    const { d, fill } = markerShapes[marker];
+    if (colours.relationshipOutline) {
+      append(element, "path", {
+        d, fill: "none", stroke: colours.relationshipOutline, "stroke-width": 3, "stroke-linejoin": "round",
+      });
+    }
     append(element, "path", {
-      ...markerShapes[marker],
-      stroke: relationshipStroke,
+      d,
+      fill: fill === "none" ? "none" : colours[fill],
+      stroke: colours.relationship,
       "stroke-width": 1,
       "stroke-linejoin": "round",
     });
@@ -406,7 +421,7 @@ function routePoints(route: ElkExtendedEdge, source: EdgeEndpoint, target: EdgeE
 function overlayRoute(source: EdgeEndpoint, target: EdgeEndpoint, host: PositionedNode, lane: number): ElkPoint[] {
   const hostRight = host.x + host.width;
   // Attached notes end before the host's right edge. Put the channel in the layout padding.
-  const channel = hostRight + noteInset + (padding - noteInset) * lane / 2;
+  const channel = hostRight + noteInset + (layoutPadding - noteInset) * lane / 2;
   const port = ({ box, overlayHost }: EdgeEndpoint): ElkPoint => ({
     x: box.x + box.width,
     y: overlayHost
@@ -424,15 +439,14 @@ function drawEdge(
   prefix: string,
   { relationship, notation }: EdgeAppearance,
   points: readonly ElkPoint[],
+  colours: DiagramColours,
 ): void {
   const segments = points.map(({ x, y }) => `${x} ${y}`);
   const attrs: SvgAttributes = {
     d: `M ${segments.join(" L ")}`,
     fill: "none",
-    stroke: relationshipStroke,
+    stroke: colours.relationship,
     "stroke-width": 1.3,
-    "data-archimate-relationship": relationship.id,
-    "data-archimate-type": relationship.type,
   };
   if (notation.line === "dashed") {
     attrs["stroke-dasharray"] = "6 4";
@@ -440,13 +454,21 @@ function drawEdge(
     attrs["stroke-dasharray"] = "1 3";
     attrs["stroke-linecap"] = "round";
   }
+  // White relationships can cross the light fill of a nested element.
+  if (colours.relationshipOutline) {
+    append(graph, "path", {
+      ...attrs, stroke: colours.relationshipOutline, "stroke-width": 3.3, "aria-hidden": "true",
+    });
+  }
   if (notation.start !== "none") {
-    attrs["marker-start"] = markerReference(defs, prefix, notation.start);
+    attrs["marker-start"] = markerReference(defs, prefix, notation.start, colours);
   }
   if (notation.end !== "none") {
-    attrs["marker-end"] = markerReference(defs, prefix, notation.end);
+    attrs["marker-end"] = markerReference(defs, prefix, notation.end, colours);
   }
-  const edge = append(graph, "path", attrs);
+  const edge = append(graph, "path", {
+    ...attrs, "data-archimate-relationship": relationship.id, "data-archimate-type": relationship.type,
+  });
   append(edge, "title").textContent = relationship.label ?? relationship.type;
 }
 
@@ -510,19 +532,22 @@ function edgeLabelPosition(
   return alternatives.find(isClear) ?? preferred;
 }
 
-function drawEdgeLabel(graph: SVGGElement, metrics: TextMetrics, position: ElkPoint): void {
+function drawEdgeLabel(graph: SVGGElement, metrics: TextMetrics, position: ElkPoint, colours: DiagramColours): void {
   const { x, y } = position;
-  append(graph, "rect", { x, y, width: metrics.width + 8, height: metrics.height, fill: paper });
-  drawText(graph, metrics, edgeLabelClass, x + (metrics.width + 8) / 2, y + metrics.height / 2);
+  append(graph, "rect", { x, y, width: metrics.width + 8, height: metrics.height, fill: colours.canvas });
+  drawText(graph, metrics, edgeLabelClass, x + (metrics.width + 8) / 2, y + metrics.height / 2, colours.text);
 }
 
 export async function renderArchiMate(
   model: ArchiMateModel,
   id: string,
   title: string,
+  options: Required<ArchiMatePluginOptions>,
   config?: MermaidConfig,
 ): Promise<void> {
   const svg = getSvg(id, config);
+  const palette = archimatePalettes[options.palette];
+  const colours = resolveDiagramColours(config);
   const measure = append(svg, "text", { visibility: "hidden" });
   const nodes = new Map<string, NodeAppearance>();
   const notes = new Map<string, NoteAppearance>();
@@ -601,7 +626,7 @@ export async function renderArchiMate(
           ? `(${container.height},${container.width})`
           : `(${container.width},${container.height})`;
         container.layoutOptions = {
-          "elk.padding": `[top=${top},left=${padding},bottom=${padding},right=${padding}]`,
+          "elk.padding": `[top=${top},left=${layoutPadding},bottom=${layoutPadding},right=${layoutPadding}]`,
           "elk.nodeSize.constraints": "MINIMUM_SIZE",
           "elk.nodeSize.minimum": minimumSize,
         };
@@ -647,7 +672,7 @@ export async function renderArchiMate(
         "elk.algorithm": "layered",
         "elk.direction": layoutDirection[model.direction],
         "elk.edgeRouting": "ORTHOGONAL",
-        "elk.padding": `[top=${padding},left=${padding},bottom=${padding},right=${padding}]`,
+        "elk.padding": `[top=${layoutPadding},left=${layoutPadding},bottom=${layoutPadding},right=${layoutPadding}]`,
         "elk.spacing.nodeNode": "38",
         "elk.layered.spacing.nodeNodeBetweenLayers": "76",
         "elk.json.shapeCoords": "ROOT",
@@ -735,51 +760,79 @@ export async function renderArchiMate(
 
   const prefix = `archimate-${Array.from(id, (char) => char.codePointAt(0)?.toString(16)).join("-")}`;
   const defs = append(svg, "defs");
-  let left = 0;
-  let top = 0;
-  let right = layout.width;
-  let bottom = layout.height;
-  for (const { appearance, labelPosition } of placedEdges) {
-    if (!appearance.label || !labelPosition) continue;
-    left = Math.min(left, labelPosition.x);
-    top = Math.min(top, labelPosition.y);
-    right = Math.max(right, labelPosition.x + appearance.label.width + 8);
-    bottom = Math.max(bottom, labelPosition.y + appearance.label.height);
+  // ELK's fixed gutter keeps routing independent of the requested outer margin.
+  let left = Math.min(layoutPadding, layout.width / 2);
+  let top = Math.min(layoutPadding, layout.height / 2);
+  let right = layout.width - left;
+  let bottom = layout.height - top;
+  const markerAnchors: ElkPoint[] = [];
+  for (const { appearance, points, labelPosition } of placedEdges) {
+    for (const { x, y } of points) {
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+    if (appearance.label && labelPosition) {
+      left = Math.min(left, labelPosition.x);
+      top = Math.min(top, labelPosition.y);
+      right = Math.max(right, labelPosition.x + appearance.label.width + 8);
+      bottom = Math.max(bottom, labelPosition.y + appearance.label.height);
+    }
+    const start = points[0];
+    const end = points.at(-1);
+    if (start && appearance.notation.start !== "none") markerAnchors.push(start);
+    if (end && appearance.notation.end !== "none") markerAnchors.push(end);
+  }
+  const padding = Math.max(strokeGutter, options.diagramPadding);
+  left -= padding;
+  top -= padding;
+  right += padding;
+  bottom += padding;
+  for (const { x, y } of markerAnchors) {
+    left = Math.min(left, x - markerReach);
+    top = Math.min(top, y - markerReach);
+    right = Math.max(right, x + markerReach);
+    bottom = Math.max(bottom, y + markerReach);
   }
   const graphWidth = right - left;
   const width = Math.max(graphWidth, (titleMetrics?.width ?? 0) + 2 * padding);
   const titleOffset = titleMetrics ? titleMetrics.height + 12 : 0;
   const height = Math.max(2 * padding, bottom - top + titleOffset);
-  append(svg, "rect", { width, height, fill: paper, "aria-hidden": "true" });
+  append(svg, "rect", { width, height, fill: colours.canvas, "aria-hidden": "true" });
   const graph = append(svg, "g", {
     transform: `translate(${(width - graphWidth) / 2 - left} ${titleOffset - top})`,
   });
 
   // Child routes need to be visible against their container backgrounds.
   for (const { appearance, box, compound } of placedNodes) {
-    if (compound || appearance.notesHeight > 0) drawNode(graph, appearance, box, compound);
+    if (compound || appearance.notesHeight > 0) drawNode(graph, appearance, box, compound, palette);
   }
   for (const { appearance, points } of placedEdges) {
-    drawEdge(graph, defs, prefix, appearance, points);
+    drawEdge(graph, defs, prefix, appearance, points, colours);
   }
   for (const { appearance, box, compound } of placedNodes) {
-    if (!compound && appearance.notesHeight === 0) drawNode(graph, appearance, box, false);
+    if (!compound && appearance.notesHeight === 0) drawNode(graph, appearance, box, false, palette);
   }
   for (const { appearance, box } of placedNotes) {
-    drawNote(graph, appearance, box);
+    drawNote(graph, appearance, box, palette.note);
   }
   for (const { appearance, labelPosition } of placedEdges) {
     if (appearance.label && labelPosition) {
-      drawEdgeLabel(graph, appearance.label, labelPosition);
+      drawEdgeLabel(graph, appearance.label, labelPosition, colours);
     }
   }
   if (titleMetrics) {
-    drawText(svg, titleMetrics, titleClass, width / 2, padding + titleMetrics.height / 2);
+    drawText(svg, titleMetrics, titleClass, width / 2, padding + titleMetrics.height / 2, colours.text);
   }
 
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("width", String(width));
-  svg.setAttribute("height", String(height));
-  svg.style.maxWidth = "100%";
-  svg.style.height = "auto";
+  if (options.useMaxWidth) {
+    svg.setAttribute("width", "100%");
+    svg.style.maxWidth = `${width}px`;
+    svg.style.height = "auto";
+  } else {
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+  }
 }

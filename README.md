@@ -108,6 +108,35 @@ Live rendering requires a host that registers the external diagram. For GitHub M
 
 Use the DSL's `title:`, `accTitle:`, and `accDescr:` declarations if the same file must pass the standalone validator. Mermaid YAML frontmatter is processed by the host before the plugin sees the source. To show a Mermaid directive as literal text in a quoted label, escape its percent signs as `\u0025`.
 
+### Theme, palette, and viewport
+
+The ArchiMate palette controls element colours and is selected independently of the Mermaid theme. Modern is the default and currently available palette. Classic and New are planned as separate palettes.
+
+Light and dark diagrams share the same element fills. Dark mode draws relationship lines and markers in white. Set `theme: 'dark'` when initializing Mermaid, or set `config.theme` in Mermaid YAML frontmatter for an individual diagram.
+
+```text
+---
+config:
+  theme: dark
+---
+archimate-beta
+  element applicationComponent billing "Billing"
+```
+
+The `archimate` export uses the Modern palette and 24 pixels of outer diagram padding. It fits narrow containers up to the SVG's natural width. To set palette and viewport options, register an instance from `createArchiMatePlugin`.
+
+```js
+import mermaid from 'mermaid';
+import { createArchiMatePlugin } from 'archimate-for-mermaid';
+
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
+await mermaid.registerExternalDiagrams([
+  createArchiMatePlugin({ palette: 'modern', diagramPadding: 32, useMaxWidth: true }),
+]);
+```
+
+`diagramPadding` accepts any finite, nonnegative number. `useMaxWidth` defaults to `true`. Set it to `false` to render the SVG at its natural size.
+
 ## Language API
 
 Use the language entry point to validate or inspect a diagram in Node.js without a browser.

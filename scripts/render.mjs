@@ -8,7 +8,10 @@ if (!input || !output || extra.length > 0) {
 } else {
   try {
     const source = await readFile(input, 'utf8');
-    const svg = await withMermaidPage((page) => renderStandaloneSvg(page, 'archimate-example', source));
+    const svg = await withMermaidPage(
+      (page) => renderStandaloneSvg(page, 'archimate-example', source),
+      { useMaxWidth: false },
+    );
     await writeFile(output, `${svg}\n`, 'utf8');
     console.log(output);
   } catch (error) {

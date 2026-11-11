@@ -1,12 +1,16 @@
 import type { ExternalDiagramDefinition, MermaidConfig } from "mermaid";
 import type { ArchiMateModel } from "../archimate/model.js";
 import { parseArchiMate } from "../archimate/parser.js";
+import type { ArchiMatePluginOptions } from "./archimateDetector.js";
 import { renderArchiMate } from "./archimateRenderer.js";
-import { archimateStyles } from "./styles.js";
+import { archimatePalettes, archimateStyles } from "./styles.js";
 
 type DiagramDefinition = Awaited<ReturnType<ExternalDiagramDefinition["loader"]>>["diagram"];
 
-export function createArchimateDiagram(): DiagramDefinition {
+export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>): DiagramDefinition {
+  if (!Object.hasOwn(archimatePalettes, options.palette)) {
+    throw new RangeError(`Unknown ArchiMate palette "${options.palette}".`);
+  }
   let model: ArchiMateModel | undefined;
   let diagramTitle: string | undefined;
   let frontmatterLineOffset = 0;
@@ -51,7 +55,7 @@ export function createArchimateDiagram(): DiagramDefinition {
           throw new Error("Parse an ArchiMate diagram before rendering it.");
         }
 
-        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? "", getConfig?.());
+        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? "", options, getConfig?.());
       },
     },
     styles: archimateStyles,

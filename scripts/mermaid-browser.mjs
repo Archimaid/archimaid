@@ -4,18 +4,20 @@ import { chromium } from 'playwright';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
-async function bundleHost() {
+async function bundleHost(pluginOptions) {
+  const pluginExport = pluginOptions === undefined ? 'archimate' : 'createArchiMatePlugin';
+  const plugin = pluginOptions === undefined ? 'plugin' : `plugin(${JSON.stringify(pluginOptions)})`;
   const { outputFiles } = await build({
     stdin: {
       resolveDir: root,
       sourcefile: 'archimate-browser-host.js',
       contents: `
         import mermaid from 'mermaid';
-        import { archimate } from 'archimate-for-mermaid';
+        import { ${pluginExport} as plugin } from 'archimate-for-mermaid';
 
         globalThis.archimateHost = (async () => {
           mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
-          await mermaid.registerExternalDiagrams([archimate]);
+          await mermaid.registerExternalDiagrams([${plugin}]);
           return mermaid;
         })();
       `,
@@ -28,8 +30,8 @@ async function bundleHost() {
   return outputFiles[0].text;
 }
 
-export async function withMermaidPage(action) {
-  const hostScript = await bundleHost();
+export async function withMermaidPage(action, pluginOptions) {
+  const hostScript = await bundleHost(pluginOptions);
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
