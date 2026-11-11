@@ -1,0 +1,54 @@
+{
+  "name": "archimate-for-mermaid",
+  "version": "0.1.0",
+  "description": "An external Mermaid diagram type for ArchiMate 3.2",
+  "keywords": ["archimate", "mermaid", "enterprise-architecture", "diagrams-as-code"],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "files": [
+    "dist/",
+    "examples/*.mmd",
+    "examples/*.svg",
+    "skills/archimate-mermaid/SKILL.md",
+    "FOUNDATION.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./language": {
+      "types": "./dist/language.d.ts",
+      "import": "./dist/language.js"
+    }
+  },
+  "bin": {
+    "archimate": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:browser": "npm run build && node --test test/browser/*.test.mjs",
+    "render": "npm run build --silent && node scripts/render.mjs",
+    "render:preview": "npm run build --silent && node scripts/render-element-preview.mjs",
+    "prepack": "npm run build"
+  },
+  "peerDependencies": {
+    "mermaid": "12.3.0"
+  },
+  "dependencies": {
+    "chevrotain": "13.2.0",
+    "elkjs": "0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "esbuild": "0.25.12",
+    "mermaid": "12.3.0",
+    "playwright": "1.56.1",
+    "typescript": "5.9.3"
+  }
+}

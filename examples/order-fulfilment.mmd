@@ -1,0 +1,10 @@
+archimate-beta
+  direction LR
+  accTitle: Order fulfilment responsibilities
+  accDescr: A fulfilment clerk is assigned to the fulfil order process.
+
+  element businessRole clerk "Fulfilment clerk"
+  element businessProcess fulfil "Fulfil order"
+  description fulfil "Pick, pack and dispatch a paid order."
+
+  relationship assignment clerk_to_fulfil clerk -> fulfil

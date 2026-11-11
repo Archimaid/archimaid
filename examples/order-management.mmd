@@ -1,0 +1,15 @@
+archimate-beta
+  direction LR
+  accTitle: Application support for order fulfilment
+
+  element businessProcess fulfil "Fulfil order"
+  element applicationComponent oms "Order management system"
+  element applicationFunction manage "Manage orders"
+  element applicationService orders "Order management"
+  element dataObject order "Order record"
+  description order "Details of a paid order."
+
+  relationship assignment manages oms -> manage
+  relationship realization provides manage -> orders
+  relationship serving supports orders -> fulfil
+  relationship access reads manage -> order access read

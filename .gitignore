@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.tgz
+task_plan.md
+notes.md
