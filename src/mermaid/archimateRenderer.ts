@@ -6,6 +6,8 @@ import {
 } from "../archimate/catalogue.js";
 import type { ArchiMateModel, ArchiMateNote } from "../archimate/model.js";
 import type { ArchiMatePluginOptions } from "./archimateDetector.js";
+import { placeArchitecture } from "./architectureLayout.js";
+import { routeArchitecture, type RoutingNode } from "./orthogonalRouter.js";
 import { archimatePalettes, resolveDiagramColours, type DiagramColours, type PaletteColours } from "./styles.js";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
@@ -29,6 +31,7 @@ const edgeLabelClass = `${labelClass} archimate-edge-label`;
 // ELK's CommonJS bundle exposes its constructor on module.exports.default.
 const elk = new Elk.default();
 
+const architectureRows = ["strategy", "business", "application", "technology", "implementationAndMigration"];
 const layoutDirection = {
   TB: "DOWN",
   BT: "UP",
@@ -42,6 +45,7 @@ type ElementType = NonNullable<ReturnType<typeof getElementType>>;
 type Outline = NonNullable<ElementType["notation"]>["outline"];
 type RelationshipNotation = NonNullable<ReturnType<typeof getRelationshipNotation>>;
 type Marker = Exclude<RelationshipNotation["start"], "none">;
+type MeasuredElkNode = ElkNode & { width: number; height: number; children?: MeasuredElkNode[] };
 
 interface TextMetrics {
   lines: readonly string[];
@@ -493,43 +497,61 @@ function edgeLabelPosition(
   route: ElkExtendedEdge,
   points: readonly ElkPoint[],
   metrics: TextMetrics,
-  layoutLabel: "use" | "check" | "ignore",
+  layoutLabel: "use" | "check" | "ignore" | "architecture",
   obstacles: readonly PositionedNode[],
 ): ElkPoint {
   const width = metrics.width + 8;
   const { height } = metrics;
   const isClear = ({ x, y }: ElkPoint) => !obstacles.some((box) => x < box.x + box.width
     && x + width > box.x && y < box.y + box.height && y + height > box.y);
-  const label = layoutLabel === "ignore" ? undefined : route.labels?.[0];
+  const label = layoutLabel === "ignore" || layoutLabel === "architecture" ? undefined : route.labels?.[0];
   if (label?.x !== undefined && label.y !== undefined && (label.x !== 0 || label.y !== 0)) {
     const position = { x: label.x, y: label.y };
     if (layoutLabel === "use" || (isClear(position) && labelNearRoute({ ...position, width, height }, points))) {
       return position;
     }
   }
-  // ELK can leave compound-edge labels at the containing node's origin.
-  // Place fallback labels beside the route so they leave short paths and their markers visible.
-  let longest = 0;
-  let centre = { x: 0, y: 0 };
-  let horizontal = true;
+  // Labels beside a route leave short paths and their markers visible.
+  const segments: { start: ElkPoint; end: ElkPoint; length: number }[] = [];
   for (let index = 1; index < points.length; index++) {
     const start = points[index - 1];
     const end = points[index];
-    if (!start || !end) continue;
-    const length = Math.hypot(end.x - start.x, end.y - start.y);
-    if (length > longest) {
-      longest = length;
-      centre = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-      horizontal = Math.abs(start.x - end.x) >= Math.abs(start.y - end.y);
+    if (start && end) segments.push({ start, end, length: Math.hypot(end.x - start.x, end.y - start.y) });
+  }
+  segments.sort((a, b) => b.length - a.length);
+  let fallback: ElkPoint | undefined;
+  for (const { start, end } of segments) {
+    const horizontal = Math.abs(start.x - end.x) >= Math.abs(start.y - end.y);
+    const along = horizontal ? "x" : "y";
+    const across = horizontal ? "y" : "x";
+    const alongSize = horizontal ? width : height;
+    const acrossSize = horizontal ? height : width;
+    const preferred = (start[along] + end[along] - alongSize) / 2;
+    const minimum = Math.min(start[along], end[along]) - alongSize / 2;
+    const maximum = Math.max(start[along], end[along]) - alongSize / 2;
+    const middle = (start[across] + end[across]) / 2;
+    const sides = horizontal ? [middle - height - 4, middle + 4] : [middle + 4, middle - width - 4];
+    const position = (coordinate: number, side: number) =>
+      horizontal ? { x: coordinate, y: side } : { x: side, y: coordinate };
+    const nearby = [0, -0.5, 0.5].flatMap((shift) =>
+      sides.map((side) => position(preferred + shift * alongSize, side)));
+    fallback ??= nearby[0];
+    const nearbyClear = nearby.find(isClear);
+    if (nearbyClear) return nearbyClear;
+    if (layoutLabel !== "architecture") break;
+
+    for (const side of sides) {
+      const candidates = obstacles.flatMap((box) => {
+        const acrossEnd = box[across] + (horizontal ? box.height : box.width);
+        if (side >= acrossEnd || side + acrossSize <= box[across]) return [];
+        return [box[along] - alongSize - 0.5, box[along] + (horizontal ? box.width : box.height) + 0.5];
+      }).filter((coordinate) => coordinate >= minimum && coordinate <= maximum)
+        .sort((a, b) => Math.abs(a - preferred) - Math.abs(b - preferred));
+      const clear = candidates.map((coordinate) => position(coordinate, side)).find(isClear);
+      if (clear) return clear;
     }
   }
-  const beside = (side: number, shift: number): ElkPoint => horizontal
-    ? { x: centre.x + (shift - 0.5) * width, y: centre.y + (side > 0 ? 4 : -height - 4) }
-    : { x: centre.x + (side > 0 ? 4 : -width - 4), y: centre.y + (shift - 0.5) * height };
-  const side = horizontal ? -1 : 1;
-  const preferred = beside(side, 0);
-  const alternatives = [0, -0.5, 0.5].flatMap((shift) => [beside(side, shift), beside(-side, shift)]);
-  return alternatives.find(isClear) ?? preferred;
+  return fallback ?? { x: 0, y: 0 };
 }
 
 function drawEdgeLabel(graph: SVGGElement, metrics: TextMetrics, position: ElkPoint, colours: DiagramColours): void {
@@ -557,12 +579,13 @@ export async function renderArchiMate(
   const overlayLaneCounts = new Map<string, number>();
   const nested = new Set<string>();
   const nestingRelationships = new Set(model.nesting?.map(({ relationship }) => relationship));
+  const architecture = model.layout === "architecture" || model.layout === "framework";
   let titleMetrics: TextMetrics | undefined;
-  let layoutInput: ElkNode;
+  let layoutInput: ElkNode & { children: MeasuredElkNode[]; edges: ElkExtendedEdge[] };
 
   try {
     titleMetrics = title ? measureText(measure, title, titleClass, 17) : undefined;
-    const children: ElkNode[] = [];
+    const children: MeasuredElkNode[] = [];
     for (const [index, note] of (model.notes ?? []).entries()) {
       const label = measureText(measure, note.text, labelClass, fontSize, 240);
       const appearance = {
@@ -582,7 +605,7 @@ export async function renderArchiMate(
       }
     }
 
-    const elkNodes = new Map<string, ElkNode>();
+    const elkNodes = new Map<string, MeasuredElkNode>();
     for (const [index, element] of model.elements.entries()) {
       const type = getElementType(element.type);
       if (!type?.notation) {
@@ -686,7 +709,26 @@ export async function renderArchiMate(
     measure.remove();
   }
 
-  const layout = await elk.layout(layoutInput);
+  const layout: ElkNode = architecture
+    ? { ...layoutInput, ...placeArchitecture(
+      layoutInput.children,
+      new Map(Array.from(nodes, ([key, { type, headerHeight, notesHeight }]) => [key, {
+        row: type.category === "composite" ? null : type.category === "physical" ? "technology" : type.category,
+        column: type.aspect === "motivation" ? null : type.aspect,
+        headerHeight: headerHeight + notesHeight,
+      }])),
+      layoutInput.edges.flatMap(({ id: edgeId, sources: [source], targets: [target] }) => {
+        const type = edges.get(edgeId)?.relationship.type;
+        return source && target && type ? [{ source, target, type }] : [];
+      }),
+      {
+        rowOrder: architectureRows,
+        padding: layoutPadding,
+        labelHeight: Array.from(edges.values()).reduce((height, edge) => Math.max(height, edge.label?.height ?? 0), 0),
+        framework: model.layout === "framework",
+      },
+    ) }
+    : await elk.layout(layoutInput);
   if (layout.width === undefined || layout.height === undefined) {
     throw new Error("ELK did not return the ArchiMate diagram size.");
   }
@@ -727,6 +769,33 @@ export async function renderArchiMate(
     }
   }
   placeNodes(layout.children ?? []);
+  let architectureRoutes: ReturnType<typeof routeArchitecture> | undefined;
+  if (architecture) {
+    const parents = new Map(model.nesting?.map(({ child, parent }) => [child, parent]));
+    const noteHosts = new Map((model.notes ?? []).map((note) => [note.id, note.on]));
+    const decorations = new Map(placedNodes.filter(({ compound }) => compound)
+      .map(({ appearance: { element, label, notation }, box }) => {
+        const titleBox = {
+          x: box.x + (box.width - label.width) / 2, y: box.y + compoundLabelInset,
+          width: label.width, height: label.height,
+        };
+        const iconBox = {
+          x: box.x + box.width - iconRightInset(notation.outline) - iconSize, y: box.y + iconInset,
+          width: iconSize, height: iconSize,
+        };
+        return [element.id, notation.icon?.length ? [titleBox, iconBox] : [titleBox]] as const;
+      }));
+    const routingNodes = new Map<string, RoutingNode>();
+    for (const [key, endpoint] of nodeBoxes) {
+      const parent = parents.get(noteHosts.get(key) ?? key);
+      const obstacles = decorations.get(key);
+      routingNodes.set(key, { box: endpoint.box, ...(parent && { parent }), ...(obstacles && { decorations: obstacles }) });
+    }
+    architectureRoutes = routeArchitecture(routingNodes, Array.from(edges).flatMap(([edgeId, appearance]) =>
+      appearance.overlayLane === undefined
+        ? [{ id: edgeId, source: appearance.relationship.source, target: appearance.relationship.target }]
+        : []));
+  }
   const labelObstacles = [
     ...placedNotes.map(({ box }) => box),
     ...placedNodes.map(({ appearance, box, compound }) => compound
@@ -747,14 +816,33 @@ export async function renderArchiMate(
     const [targetNode] = route.targets;
     const host = source.overlayHost ?? target.overlayHost;
     const laneCount = sourceNode === undefined ? undefined : overlayLaneCounts.get(sourceNode);
-    const points = host && laneCount && appearance.overlayLane !== undefined
-      ? overlayRoute(source, target, host, (appearance.overlayLane + 1) / (laneCount + 1))
-      : routePoints(route, source, target);
+    let points: ElkPoint[];
+    if (host && laneCount && appearance.overlayLane !== undefined) {
+      points = overlayRoute(source, target, host, (appearance.overlayLane + 1) / (laneCount + 1));
+    } else if (architectureRoutes) {
+      const path = architectureRoutes.get(route.id);
+      const start = path?.[0];
+      const next = path?.[1];
+      const end = path?.at(-1);
+      const previous = path?.at(-2);
+      if (!path || !start || !next || !end || !previous) {
+        throw new Error(`Missing architecture route for relationship "${appearance.relationship.id}".`);
+      }
+      points = path.slice();
+      points[0] = clipCorner(start, next, source);
+      points[points.length - 1] = clipCorner(end, previous, target);
+    } else {
+      points = routePoints(route, source, target);
+    }
     const touchesNestedNode = nested.has(sourceNode ?? "") || nested.has(targetNode ?? "");
-    const layoutLabel = appearance.overlayLane !== undefined ? "ignore" : touchesNestedNode ? "check" : "use";
+    const layoutLabel = architecture ? "architecture" : appearance.overlayLane !== undefined
+      ? "ignore" : touchesNestedNode ? "check" : "use";
     const labelPosition = appearance.label
       ? edgeLabelPosition(route, points, appearance.label, layoutLabel, labelObstacles)
       : undefined;
+    if (architecture && labelPosition && appearance.label) {
+      labelObstacles.push({ ...labelPosition, width: appearance.label.width + 8, height: appearance.label.height });
+    }
     return { appearance, points, labelPosition };
   });
 

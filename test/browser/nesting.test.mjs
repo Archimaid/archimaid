@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
 
-test('Mermaid renders nested components and connects notes at their visible outlines', async () => {
+async function checkNestedNotes(layout) {
   const source = `archimate-beta
-direction LR
+${layout}
 element applicationComponent suite "Suite"
 element applicationComponent inner "Order management"
 element applicationComponent external "External system"
@@ -118,7 +118,13 @@ relationship influence clarification floating -> attached
     assert.ok(onOutline(rendered.floating, rendered.clarification.start, true));
     assert.ok(onOutline(rendered.attached, rendered.clarification.end, true));
   });
-});
+}
+
+test('Mermaid renders nested components and connects notes at their visible outlines', () =>
+  checkNestedNotes('direction LR'));
+
+test('architecture layout routes across nested frames and connects attached and standalone notes', () =>
+  checkNestedNotes('layout architecture'));
 
 test('top-to-bottom nesting reserves room for the parent title and attached note', async () => {
   const source = `archimate-beta

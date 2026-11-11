@@ -5,7 +5,7 @@ description: Author, validate, and render ArchiMate 3.2 diagrams in the archimat
 
 # ArchiMate for Mermaid
 
-Start the source with `archimate-beta`. Put one declaration on each line. Use the exact type keys exported by `archimate-for-mermaid/language` in `elementTypes` and `relationshipTypes`. Give elements, relationships, and notes unique IDs. IDs start with a letter or underscore and can contain letters, digits, underscores, and hyphens. Quote display names, descriptions, labels, and note text with JSON-compatible double quotes. Use `\n` for a line break. Set `direction` to `TB`, `BT`, `LR`, or `RL`. The default is `TB`.
+Start the source with `archimate-beta`. Put one declaration on each line. Use the exact type keys exported by `archimate-for-mermaid/language` in `elementTypes` and `relationshipTypes`. Give elements, relationships, and notes unique IDs. IDs start with a letter or underscore and can contain letters, digits, underscores, and hyphens. Quote display names, descriptions, labels, and note text with JSON-compatible double quotes. Use `\n` for a line break.
 
 ```text
 archimate-beta
@@ -21,6 +21,13 @@ archimate-beta
   nest billing in suite via includes_billing
   note review "Confirm retry behaviour" on suite
 ```
+
+## Layout
+
+- Omit `layout` and `direction` to use architecture layout by default, or select it explicitly with `layout architecture`. Occupied rows follow Strategy, Business, Application, Technology (including Physical), and Implementation & Migration. Relationships guide the placement of connected elements within and across layers. Motivation sits at the top, near the chains it connects to.
+- Use `layout framework` for the same layer order with fixed Passive Structure, Behavior, and Active Structure columns from left to right and Motivation on the far right. Only occupied rows and columns take up space.
+- Architecture and framework layouts preserve nesting. A parent with its own layer determines its container's placement. Groups without their own layer that contain elements from multiple layers are placed separately.
+- Use `layout graph` for relationship-driven placement. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL` and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
 
 ## Model relationships and annotations
 
@@ -38,5 +45,6 @@ Validation covers syntax, declared endpoints, supported element and relationship
 For SVG rendering from the checkout, install Playwright Chromium with `npx playwright install chromium` if needed, then run `npm run render -- diagram.mmd diagram.svg`. Inspect layout and labels before sharing the SVG. For browser integration, use the Mermaid peer version in `package.json` and call `await mermaid.registerExternalDiagrams([archimate])` with `archimate` imported from `archimate-for-mermaid` before rendering. Use the exported SVG in Markdown hosts without custom diagram registration.
 
 - [Order management](../../examples/order-management.mmd) models assignment, realization, serving, and read access.
+- Cross-layer relationships shows architecture layout and nested claims processing. [Source](../../examples/cross-layer-relationships.mmd) · [SVG](../../examples/cross-layer-relationships.svg)
 - [Nested components](../../examples/nested-components.mmd) shows composition, attached and standalone notes, and cross-boundary connections.
 - [Notation preview](../../examples/element-preview.svg) shows the supported symbols and line styles.

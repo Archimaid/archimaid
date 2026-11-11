@@ -48,14 +48,25 @@ archimate-beta
   relationship assignment clerk_to_fulfil clerk -> fulfil
 ```
 
-Use `direction TB`, `BT`, `LR`, or `RL` to choose the layout direction. Add element details with `description elementId "Text"` and a visible relationship label with `label "Text"` after the relationship's endpoints and options.
+Add element details with `description elementId "Text"` and a visible relationship label with `label "Text"` after the relationship's endpoints and options.
 
 | Example | What it shows | Files |
 | --- | --- | --- |
 | Order fulfilment | A Business Role assigned to a Business Process | [Source](examples/order-fulfilment.mmd) |
 | Order management | Assignment, Realization, Serving, and read Access | [Source](examples/order-management.mmd) · [SVG](examples/order-management.svg) |
+| Cross-layer relationships | Architecture layout with Business, Application, and Technology rows and nested claims processing | [Source](examples/cross-layer-relationships.mmd) · [SVG](examples/cross-layer-relationships.svg) |
 | Nested components | Composition shown as containment, edges crossing the boundary, and notes | [Source](examples/nested-components.mmd) · [SVG](examples/nested-components.svg) |
 | Notation sheet | The element catalogue and examples of every relationship, including Access and Association variants | [SVG](examples/element-preview.svg) |
+
+### Choose a layout
+
+Architecture layout is the default when you omit both `layout` and `direction`. Use `layout architecture` to select it explicitly. It orders occupied layers from top to bottom as Strategy, Business, Application, Technology (including Physical), and Implementation & Migration. Relationships guide the placement of connected elements within and across layers. Motivation sits at the top, near the chains it connects to.
+
+Use `layout framework` to arrange the same layers in fixed aspect columns. Passive Structure, Behavior, and Active Structure run from left to right, with Motivation on the far right. Only occupied rows and columns take up space.
+
+Architecture and framework layouts preserve nesting. A parent with its own layer determines the placement of its container. Groups without their own layer that contain elements from multiple layers are placed separately.
+
+Use `layout graph` for a relationship-driven layout. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL`, and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
 
 ### Nest elements and add notes
 
@@ -179,6 +190,6 @@ For contributions, check the design notes, update tests for language or renderin
 - The Open Group's ArchiMate 3.2 specification defines the element and relationship types. [Specification C226](https://publications.opengroup.org/standards/archimate/c226)
 - The Open Group's reference cards illustrate element figures and relationship notation. [Reference cards N221](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf)
 - The catalogue records the Archi 3.2 reference fills. The renderer defines its display palette separately. [Archi palette](https://www.archimatetool.com/downloads/colour-schemes/ArchiMate%20Standard%20-%203.2.prefs)
-- Mermaid provides the external diagram API, and ELK lays out the diagram. [Mermaid diagram guide](https://mermaid.js.org/community/new-diagram.html) · [ELK](https://eclipse.dev/elk/)
+- Mermaid provides the external diagram API, and ELK provides the graph layout. [Mermaid diagram guide](https://mermaid.js.org/community/new-diagram.html) · [ELK](https://eclipse.dev/elk/)
 
 The plugin code is licensed under the [MIT License](LICENSE). The ArchiMate specification has [separate licensing terms](https://www.opengroup.co.za/standards). ArchiMate® is a registered trademark of The Open Group.

@@ -43,6 +43,23 @@ test('parses forward references, comments, CRLF, metadata and quoted Unicode tex
   });
 });
 
+test('selects architecture layout by default and respects explicit graph directions', () => {
+  assert.equal(parseArchiMate('archimate-beta').layout, 'architecture');
+  assert.equal(parseArchiMate('archimate-beta\ndirection BT').layout, undefined);
+  assert.equal(parseArchiMate('archimate-beta\nlayout graph').direction, 'TB');
+  assert.equal(parseArchiMate('archimate-beta\nlayout graph').layout, 'graph');
+  assert.equal(parseArchiMate('archimate-beta\ndirection BT\nlayout architecture').layout, 'architecture');
+  assert.equal(parseArchiMate('archimate-beta\ndirection BT\nlayout framework').layout, 'framework');
+  assert.throws(
+    () => parseArchiMate('archimate-beta\nlayout radial'),
+    { code: 'INVALID_LAYOUT', line: 2, column: 8 },
+  );
+  assert.throws(
+    () => parseArchiMate('archimate-beta\nlayout graph\nlayout architecture'),
+    { code: 'DUPLICATE_DECLARATION', line: 3, column: 8 },
+  );
+});
+
 test('preserves semantic direction when specifying access markers and Association direction', () => {
   const result = parseArchiMate([
     'archimate-beta',

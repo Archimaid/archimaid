@@ -4,6 +4,7 @@ import { getElementType, getRelationshipNotation } from './catalogue.js';
 import type { AccessMode } from './catalogue.js';
 import type {
   ArchiMateDirection,
+  ArchiMateLayout,
   ArchiMateModel,
   ArchiMateNesting,
   ArchiMateNote,
@@ -29,6 +30,7 @@ function keyword(name: string, text: string) {
 }
 
 const direction = keyword('Direction', 'direction');
+const layout = keyword('Layout', 'layout');
 const element = keyword('Element', 'element');
 const description = keyword('Description', 'description');
 const relationship = keyword('Relationship', 'relationship');
@@ -42,7 +44,7 @@ const inside = keyword('In', 'in');
 const via = keyword('Via', 'via');
 
 const tokens = [
-  space, comment, newline, header, metadata, quoted, arrow, direction, element,
+  space, comment, newline, header, metadata, quoted, arrow, direction, layout, element,
   description, relationship, access, directed, label, note, on, nest, inside, via, identifier,
 ];
 const lexer = new Lexer(tokens);
@@ -56,13 +58,14 @@ class ArchiMateParser extends CstParser {
       this.OPTION(() => this.SUBRULE(this.statement));
     });
     this.CONSUME(EOF, {
-      ERR_MSG: 'Expected a new line or an ArchiMate declaration (direction, element, description, relationship, note, nest, or metadata).',
+      ERR_MSG: 'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, note, nest, or metadata).',
     });
   });
 
   private readonly statement = this.RULE('statement', () => {
     this.OR([
       { ALT: () => this.SUBRULE(this.directionStatement) },
+      { ALT: () => this.SUBRULE(this.layoutStatement) },
       { ALT: () => this.SUBRULE(this.elementStatement) },
       { ALT: () => this.SUBRULE(this.descriptionStatement) },
       { ALT: () => this.SUBRULE(this.relationshipStatement) },
@@ -74,6 +77,11 @@ class ArchiMateParser extends CstParser {
 
   private readonly directionStatement = this.RULE('directionStatement', () => {
     this.CONSUME(direction);
+    this.CONSUME(identifier, { LABEL: 'value' });
+  });
+
+  private readonly layoutStatement = this.RULE('layoutStatement', () => {
+    this.CONSUME(layout);
     this.CONSUME(identifier, { LABEL: 'value' });
   });
 
@@ -140,6 +148,7 @@ class ArchiMateParser extends CstParser {
 type Context = CstNode['children'];
 type Declaration =
   | { kind: 'direction'; value: IToken }
+  | { kind: 'layout'; value: IToken }
   | { kind: 'metadata'; value: IToken }
   | { kind: 'element'; type: IToken; id: IToken; name: IToken }
   | { kind: 'description'; id: IToken; value: IToken }
@@ -188,6 +197,10 @@ class DeclarationVisitor extends BaseVisitor {
 
   directionStatement(ctx: Context): Declaration {
     return { kind: 'direction', value: requiredToken(ctx, 'value') };
+  }
+
+  layoutStatement(ctx: Context): Declaration {
+    return { kind: 'layout', value: requiredToken(ctx, 'value') };
   }
 
   elementStatement(ctx: Context): Declaration {
@@ -246,6 +259,7 @@ export type ArchiMateErrorCode =
   | 'SYNTAX_ERROR'
   | 'INVALID_TEXT'
   | 'INVALID_DIRECTION'
+  | 'INVALID_LAYOUT'
   | 'DUPLICATE_DECLARATION'
   | 'DUPLICATE_ID'
   | 'UNKNOWN_ELEMENT_TYPE'
@@ -386,6 +400,7 @@ function validateNesting(
 
 function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMateModel {
   let diagramDirection: ArchiMateDirection | undefined;
+  let diagramLayout: ArchiMateLayout | undefined;
   const diagramMetadata: Partial<Record<MetadataKey, string>> = {};
   const entities = new Map<string, EntityDeclaration>();
   const descriptions = new Map<string, DescriptionDeclaration>();
@@ -400,6 +415,15 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
         if (diagramDirection) fail('DUPLICATE_DECLARATION', statement.value, 'Direction is already set.');
         diagramDirection = readDirection(statement.value, fail);
         break;
+      case 'layout': {
+        const { value } = statement;
+        if (diagramLayout) fail('DUPLICATE_DECLARATION', value, 'Layout is already set.');
+        if (value.image !== 'architecture' && value.image !== 'framework' && value.image !== 'graph') {
+          fail('INVALID_LAYOUT', value, 'Expected layout architecture, framework, or graph.');
+        }
+        diagramLayout = value.image;
+        break;
+      }
       case 'metadata': {
         const separator = statement.value.image.indexOf(':');
         const name = statement.value.image.slice(0, separator).trim();
@@ -491,9 +515,11 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
     };
   });
   const nesting = validateNesting(nestingDeclarations, entities, relationships, fail);
+  const selectedLayout = diagramLayout ?? (diagramDirection === undefined ? 'architecture' : undefined);
 
   return {
     direction: diagramDirection ?? 'TB',
+    ...(selectedLayout && { layout: selectedLayout }),
     ...diagramMetadata,
     elements: elementDeclarations.map((statement) => {
       const elementDescription = descriptions.get(statement.id.image);

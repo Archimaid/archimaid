@@ -1,6 +1,7 @@
 import type { AccessMode } from './catalogue.js';
 
 export type ArchiMateDirection = 'TB' | 'BT' | 'LR' | 'RL';
+export type ArchiMateLayout = 'architecture' | 'framework' | 'graph';
 
 export interface ArchiMateElement {
   readonly id: string;
@@ -33,6 +34,7 @@ export interface ArchiMateNesting {
 
 export interface ArchiMateModel {
   readonly direction: ArchiMateDirection;
+  readonly layout?: ArchiMateLayout;
   readonly title?: string;
   readonly accTitle?: string;
   readonly accDescription?: string;

@@ -5,10 +5,11 @@ export {
   getElementType,
   relationshipTypes,
 } from './archimate/catalogue.js';
-export type { AccessMode, ElementType, RelationshipType } from './archimate/catalogue.js';
+export type { AccessMode, ElementAspect, ElementType, RelationshipType } from './archimate/catalogue.js';
 export type {
   ArchiMateDirection,
   ArchiMateElement,
+  ArchiMateLayout,
   ArchiMateModel,
   ArchiMateNesting,
   ArchiMateNote,
