@@ -1,9 +1,10 @@
 import { CstParser, createToken, EOF, Lexer } from 'chevrotain';
-import type { CstNode, IToken, TokenType } from 'chevrotain';
-import { getElementType, getRelationshipNotation } from './catalogue.js';
+import type { CstNode, IRecognitionException, IToken, TokenType } from 'chevrotain';
+import { elementTypes, getElementType, getRelationshipNotation, relationshipTypes } from './catalogue.js';
 import type { AccessMode, RelationshipType } from './catalogue.js';
 import type {
   ArchiMateDirection,
+  ArchiMateElement,
   ArchiMateLayout,
   ArchiMateModel,
   ArchiMateNesting,
@@ -15,25 +16,69 @@ const space = createToken({ name: 'Space', pattern: /[ \t]+/, group: Lexer.SKIPP
 const comment = createToken({ name: 'Comment', pattern: /%%[^\r\n]*/, group: Lexer.SKIPPED });
 const newline = createToken({ name: 'Newline', pattern: /\r\n|\r|\n/, line_breaks: true });
 const metadataPattern = /(?:title|accTitle|accDescr)[ \t]*:[^\r\n]*/y;
+const accDescrBlockPattern = /accDescr[ \t]*\{[^}]*\}/y;
+const aggregationPattern = /o--(?![->|/])/y;
 
-// Metadata only starts a line, so an element named "title" can still precede a ": label".
-function matchMetadata(text: string, offset: number): RegExpExecArray | null {
+function startsStatement(text: string, offset: number): boolean {
   for (let index = offset - 1; index >= 0 && text[index] !== '\n' && text[index] !== '\r'; index--) {
-    if (text[index] !== ' ' && text[index] !== '\t') return null;
+    if (text[index] !== ' ' && text[index] !== '\t') return false;
   }
-  metadataPattern.lastIndex = offset;
-  return metadataPattern.exec(text);
+  return true;
 }
 
+// A "%%" after whitespace starts a trailing comment, as on every other statement. Double quotes keep it literal.
+function metadataValueEnd(image: string): number {
+  let quoted = false;
+  for (let index = image.indexOf(':') + 1; index < image.length; index++) {
+    const character = image[index];
+    if (quoted && character === '\\') {
+      index++;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (!quoted && character === '%' && image[index + 1] === '%' && /[ \t]/.test(image[index - 1] ?? '')) {
+      return index;
+    }
+  }
+  return image.length;
+}
+
+// Metadata only starts a line, so an element named "title" can still precede a ": label".
+function matchMetadata(text: string, offset: number): [string] | null {
+  if (!startsStatement(text, offset)) return null;
+  metadataPattern.lastIndex = offset;
+  const match = metadataPattern.exec(text);
+  return match ? [match[0].slice(0, metadataValueEnd(match[0]))] : null;
+}
+
+function matchAccDescrBlock(text: string, offset: number): RegExpExecArray | null {
+  if (!startsStatement(text, offset)) return null;
+  accDescrBlockPattern.lastIndex = offset;
+  return accDescrBlockPattern.exec(text);
+}
+
+// An ID "o" at the start of "o--b" must not lex as the Aggregation glyph, so the glyph needs a source before it.
+function matchAggregation(text: string, offset: number): RegExpExecArray | null {
+  if (startsStatement(text, offset) || !/[ \t]/.test(text[offset - 1] ?? '')) return null;
+  aggregationPattern.lastIndex = offset;
+  return aggregationPattern.exec(text);
+}
+
+const accDescrBlock = createToken({
+  name: 'AccDescrBlock',
+  pattern: { exec: matchAccDescrBlock },
+  line_breaks: true,
+  start_chars_hint: ['a'],
+});
 const metadata = createToken({
   name: 'Metadata',
   pattern: { exec: matchMetadata },
   line_breaks: false,
   start_chars_hint: ['t', 'a'],
 });
+const quotedTextPattern = /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"/;
 const quoted = createToken({
   name: 'QuotedText',
-  pattern: /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"/,
+  pattern: quotedTextPattern,
   line_breaks: false,
   label: 'quoted text',
 });
@@ -90,16 +135,28 @@ const connectorNotations = new Map<TokenType, ConnectorNotation>();
 const connectorTokens = Object.entries(relationshipConnectors)
   .sort(([left], [right]) => right.length - left.length)
   .map(([glyph, notation], index) => {
-    const escaped = glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-    // "o--" must not split identifiers such as "o-->target" or "o---target".
-    const pattern = new RegExp(glyph === 'o--' ? escaped + '(?![->|/])' : escaped);
-    const token = createToken({ name: 'Connector' + index, pattern, label: '"' + glyph + '"', categories: connector });
+    const tokenLabel = '"' + glyph + '"';
+    const token = glyph === 'o--'
+      ? createToken({
+        name: 'Connector' + index,
+        pattern: { exec: matchAggregation },
+        line_breaks: false,
+        start_chars_hint: ['o'],
+        label: tokenLabel,
+        categories: connector,
+      })
+      : createToken({
+        name: 'Connector' + index,
+        pattern: new RegExp(glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')),
+        label: tokenLabel,
+        categories: connector,
+      });
     connectorNotations.set(token, notation);
     return token;
   });
 
 const tokens = [
-  space, comment, newline, header, metadata, quoted, connector, ...connectorTokens, arrow, colon,
+  space, comment, newline, header, accDescrBlock, metadata, quoted, connector, ...connectorTokens, arrow, colon,
   direction, layout, element, description, relationship, access, directed, label, note, on, nest,
   inside, via, identifier,
 ];
@@ -184,7 +241,10 @@ class ArchiMateParser extends CstParser {
   });
 
   private readonly metadataStatement = this.RULE('metadataStatement', () => {
-    this.CONSUME(metadata);
+    this.OR([
+      { ALT: () => this.CONSUME(metadata, { LABEL: 'value' }) },
+      { ALT: () => this.CONSUME(accDescrBlock, { LABEL: 'value' }) },
+    ]);
   });
 
   private readonly noteStatement = this.RULE('noteStatement', () => {
@@ -318,7 +378,7 @@ class DeclarationVisitor extends BaseVisitor {
   }
 
   metadataStatement(ctx: Context): Declaration {
-    return { kind: 'metadata', value: requiredToken(ctx, 'Metadata') };
+    return { kind: 'metadata', value: requiredToken(ctx, 'value') };
   }
 
   noteStatement(ctx: Context): Declaration {
@@ -358,6 +418,8 @@ export type ArchiMateErrorCode =
   | 'INVALID_NOTE_TARGET'
   | 'INVALID_NESTING';
 
+export type ArchiMateWarningCode = 'DUPLICATE_RELATIONSHIP';
+
 export class ArchiMateError extends Error {
   constructor(
     readonly code: ArchiMateErrorCode,
@@ -374,7 +436,88 @@ export interface ArchiMateParseOptions {
   readonly lineOffset?: number;
 }
 
-type Fail = (code: ArchiMateErrorCode, token: IToken, message: string) => never;
+/** Lines and columns are 1-based. The end position is exclusive, as in editor ranges. */
+export interface ArchiMateSourceRange {
+  readonly line: number;
+  readonly column: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+}
+
+export interface ArchiMateErrorDiagnostic extends ArchiMateSourceRange {
+  readonly severity: 'error';
+  readonly code: ArchiMateErrorCode;
+  readonly message: string;
+}
+
+export interface ArchiMateWarningDiagnostic extends ArchiMateSourceRange {
+  readonly severity: 'warning';
+  readonly code: ArchiMateWarningCode;
+  readonly message: string;
+}
+
+export type ArchiMateDiagnostic = ArchiMateErrorDiagnostic | ArchiMateWarningDiagnostic;
+
+export interface ArchiMateValidationResult {
+  readonly model?: ArchiMateModel;
+  readonly diagnostics: readonly ArchiMateDiagnostic[];
+}
+
+class DiagnosticCollector {
+  readonly diagnostics: ArchiMateDiagnostic[] = [];
+
+  constructor(private readonly text: string, private readonly lineOffset: number) {}
+
+  get hasErrors(): boolean {
+    return this.diagnostics.some(({ severity }) => severity === 'error');
+  }
+
+  error(code: ArchiMateErrorCode, token: IToken, message: string): void {
+    this.errorAt(code, this.range(token, token), message);
+  }
+
+  errorAt(code: ArchiMateErrorCode, range: ArchiMateSourceRange, message: string): void {
+    this.diagnostics.push({ severity: 'error', code, message, ...range });
+  }
+
+  warning(code: ArchiMateWarningCode, start: IToken, end: IToken, message: string): void {
+    this.diagnostics.push({ severity: 'warning', code, message, ...this.range(start, end) });
+  }
+
+  line(token: IToken): number {
+    return this.range(token, token).line;
+  }
+
+  // Lexer line numbers are relative to the text this parser sees; the host adds the lines it removed.
+  sourceRange(line: number, column: number, endLine: number, endColumn: number): ArchiMateSourceRange {
+    return {
+      line: line + this.lineOffset,
+      column,
+      endLine: endLine + this.lineOffset,
+      endColumn,
+    };
+  }
+
+  private range(start: IToken, end: IToken): ArchiMateSourceRange {
+    const { startLine, startColumn } = start;
+    if (startLine === undefined || !(startLine > 0) || startColumn === undefined || !(startColumn > 0)) {
+      return this.endOfSource();
+    }
+    const { endLine, endColumn } = end;
+    return endLine !== undefined && endLine > 0 && endColumn !== undefined && endColumn > 0
+      ? this.sourceRange(startLine, startColumn, endLine, endColumn + 1)
+      : this.sourceRange(startLine, startColumn, startLine, startColumn);
+  }
+
+  // Tokens such as EOF carry no position, so errors at the end of input point after the last character.
+  private endOfSource(): ArchiMateSourceRange {
+    const lines = this.text.split(/\r\n|\n|\r/);
+    const column = (lines.at(-1)?.length ?? 0) + 1;
+    return this.sourceRange(lines.length, column, lines.length, column);
+  }
+}
+
+type Report = (code: ArchiMateErrorCode, token: IToken, message: string) => void;
 type MetadataKey = 'title' | 'accTitle' | 'accDescription';
 type ElementDeclaration = Extract<Declaration, { kind: 'element' }>;
 type DescriptionDeclaration = Extract<Declaration, { kind: 'description' }>;
@@ -382,44 +525,135 @@ type NoteDeclaration = Extract<Declaration, { kind: 'note' }>;
 type NestingDeclaration = Extract<Declaration, { kind: 'nesting' }>;
 type EntityDeclaration = ElementDeclaration | RelationshipDeclaration | NoteDeclaration;
 
-function readDirection(token: IToken, fail: Fail): ArchiMateDirection {
+// Optimal string alignment distance: a swapped pair of letters counts as one edit.
+function editDistance(left: string, right: string): number {
+  let previousRow: number[] = [];
+  let row = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= left.length; i++) {
+    const nextRow = [i];
+    for (let j = 1; j <= right.length; j++) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      let distance = Math.min((row[j] ?? 0) + 1, (nextRow[j - 1] ?? 0) + 1, (row[j - 1] ?? 0) + cost);
+      if (i > 1 && j > 1 && left[i - 1] === right[j - 2] && left[i - 2] === right[j - 1]) {
+        distance = Math.min(distance, (previousRow[j - 2] ?? 0) + 1);
+      }
+      nextRow.push(distance);
+    }
+    previousRow = row;
+    row = nextRow;
+  }
+  return row[right.length] ?? 0;
+}
+
+function closestMatch(value: string, candidates: Iterable<string>): string | undefined {
+  const needle = value.toLowerCase();
+  let best: string | undefined;
+  let bestDistance = Infinity;
+  let tied = false;
+  for (const candidate of candidates) {
+    const distance = editDistance(needle, candidate.toLowerCase());
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+      tied = false;
+    } else if (distance === bestDistance) {
+      tied = true;
+    }
+  }
+  if (best === undefined || tied) return undefined;
+  return bestDistance <= Math.max(1, Math.floor(best.length / 4)) ? best : undefined;
+}
+
+function withSuggestion(message: string, value: string, candidates: Iterable<string>): string {
+  const suggestion = closestMatch(value, candidates);
+  return suggestion === undefined ? message : message + ' Did you mean "' + suggestion + '"?';
+}
+
+const directionKeys = ['TB', 'TD', 'BT', 'LR', 'RL'];
+const layoutKeys: readonly ArchiMateLayout[] = ['architecture', 'framework', 'graph'];
+const accessModes: readonly AccessMode[] = ['read', 'write', 'readWrite', 'unspecified'];
+
+function readDirection(token: IToken, report: Report): ArchiMateDirection | undefined {
   switch (token.image) {
     case 'TD':
     case 'TB': return 'TB';
     case 'BT':
     case 'LR':
     case 'RL': return token.image;
-    default: return fail('INVALID_DIRECTION', token, 'Expected direction TB, TD, BT, LR, or RL.');
+    default:
+      report(
+        'INVALID_DIRECTION',
+        token,
+        withSuggestion('Expected direction TB, TD, BT, LR, or RL.', token.image, directionKeys),
+      );
+      return undefined;
   }
 }
 
-function readAccessMode(token: IToken, fail: Fail): AccessMode {
-  switch (token.image) {
-    case 'read':
-    case 'write':
-    case 'readWrite':
-    case 'unspecified': return token.image;
-    default: return fail(
-      'INVALID_RELATIONSHIP_PROPERTY',
+function readLayout(token: IToken, report: Report): ArchiMateLayout | undefined {
+  const value = layoutKeys.find((key) => key === token.image);
+  if (!value) {
+    report(
+      'INVALID_LAYOUT',
       token,
-      'Expected access mode read, write, readWrite, or unspecified.',
+      withSuggestion('Expected layout architecture, framework, or graph.', token.image, layoutKeys),
     );
-  }
-}
-
-function ensureXmlText(value: string, token: IToken, fail: Fail): string {
-  // XML 1.0 excludes control characters and unpaired UTF-16 surrogate code units.
-  if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {
-    fail('INVALID_TEXT', token, 'Text contains a character that cannot be written to SVG.');
   }
   return value;
 }
 
-function readQuotedText(token: IToken, fail: Fail): string {
-  const value: unknown = JSON.parse(token.image);
-  if (typeof value !== 'string') throw new Error('Invalid ArchiMate quoted token.');
-  return ensureXmlText(value, token, fail);
+function readAccessMode(token: IToken, report: Report): AccessMode | undefined {
+  const value = accessModes.find((mode) => mode === token.image);
+  if (!value) {
+    report(
+      'INVALID_RELATIONSHIP_PROPERTY',
+      token,
+      withSuggestion('Expected access mode read, write, readWrite, or unspecified.', token.image, accessModes),
+    );
+  }
+  return value;
 }
+
+function checkXmlText(value: string, token: IToken, report: Report): string | undefined {
+  // XML 1.0 excludes control characters and unpaired UTF-16 surrogate code units.
+  if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {
+    report('INVALID_TEXT', token, 'Text contains a character that cannot be written to SVG.');
+    return undefined;
+  }
+  return value;
+}
+
+function readQuotedText(
+  token: IToken,
+  report: Report,
+  emptyMessage?: string,
+  image: string = token.image,
+): string | undefined {
+  const value: unknown = JSON.parse(image);
+  if (typeof value !== 'string') throw new Error('Invalid ArchiMate quoted token.');
+  if (emptyMessage !== undefined && value.trim() === '') {
+    report('INVALID_TEXT', token, emptyMessage);
+    return undefined;
+  }
+  return checkXmlText(value, token, report);
+}
+
+function readMetadata(token: IToken): { name: string; key: MetadataKey; value: string } {
+  if (token.tokenType === accDescrBlock) {
+    const value = token.image
+      .slice(token.image.indexOf('{') + 1, -1)
+      .trim()
+      .replace(/[ \t]*(?:\r\n|\r|\n)[ \t]*/g, '\n');
+    return { name: 'accDescr', key: 'accDescription', value };
+  }
+  const separator = token.image.indexOf(':');
+  const name = token.image.slice(0, separator).trim();
+  const key = name === 'title' ? 'title' : name === 'accTitle' ? 'accTitle' : 'accDescription';
+  return { name, key, value: token.image.slice(separator + 1).trim() };
+}
+
+// A fully quoted metadata value is decoded like other text, so it can hold " %%" or escapes such as \u0025.
+const wholeQuotedText = new RegExp('^' + quotedTextPattern.source + '$');
 
 const parentToChildNestingTypes = new Set([
   'composition', 'aggregation', 'assignment', 'realization', 'access',
@@ -431,37 +665,57 @@ function supportsNesting(entry: ArchiMateRelationship, child: string, parent: st
     : parentToChildNestingTypes.has(entry.type) && entry.source === parent && entry.target === child;
 }
 
+function connects(entry: ArchiMateRelationship, first: string, second: string): boolean {
+  return (entry.source === first && entry.target === second) || (entry.source === second && entry.target === first);
+}
+
+interface NestingContext {
+  readonly relationships: readonly ArchiMateRelationship[];
+  readonly relationshipsById: ReadonlyMap<string, ArchiMateRelationship>;
+  // Relationships and IDs that already failed validation must not cause a second, misleading nesting error.
+  readonly invalidRelationshipIds: ReadonlySet<string>;
+  readonly unknownEndpointIds: ReadonlySet<string>;
+  readonly report: Report;
+}
+
 function findNestingRelationship(
   statement: NestingDeclaration,
   token: IToken,
-  relationshipsById: ReadonlyMap<string, ArchiMateRelationship>,
-  fail: Fail,
-): ArchiMateRelationship {
+  context: NestingContext,
+): ArchiMateRelationship | undefined {
   const child = statement.child.image;
   const parent = statement.parent.image;
-  const found = relationshipsById.get(token.image);
-  if (!found) return fail('INVALID_NESTING', token, 'Unknown relationship "' + token.image + '".');
+  const found = context.relationshipsById.get(token.image);
+  if (!found) {
+    context.report('INVALID_NESTING', token, 'Unknown relationship "' + token.image + '".');
+    return undefined;
+  }
+  if (context.invalidRelationshipIds.has(found.id)) return undefined;
   if (!supportsNesting(found, child, parent)) {
-    fail(
+    context.report(
       'INVALID_NESTING',
       token,
       'Relationship "' + token.image + '" does not support nesting "' + child + '" in "' + parent + '".',
     );
+    return undefined;
   }
   return found;
 }
 
 function inferNestingRelationship(
   statement: NestingDeclaration,
-  relationships: readonly ArchiMateRelationship[],
-  fail: Fail,
-): ArchiMateRelationship {
+  context: NestingContext,
+): ArchiMateRelationship | undefined {
   const child = statement.child.image;
   const parent = statement.parent.image;
-  const candidates = relationships.filter((entry) => supportsNesting(entry, child, parent));
+  const candidates = context.relationships.filter((entry) => supportsNesting(entry, child, parent));
   const [only] = candidates;
   if (only && candidates.length === 1) return only;
-  return fail(
+  if (candidates.length === 0 && context.relationships.some((entry) =>
+    context.invalidRelationshipIds.has(entry.id) && connects(entry, child, parent))) {
+    return undefined;
+  }
+  context.report(
     'INVALID_NESTING',
     statement.parent,
     candidates.length === 0
@@ -469,38 +723,41 @@ function inferNestingRelationship(
       : 'Several relationships can nest "' + child + '" in "' + parent
         + '". Declare the intended one with an ID and add "via <relationship-id>".',
   );
+  return undefined;
 }
 
 function validateNesting(
   declarations: readonly NestingDeclaration[],
   entities: ReadonlyMap<string, EntityDeclaration>,
-  relationships: readonly ArchiMateRelationship[],
-  fail: Fail,
+  context: NestingContext,
 ): ArchiMateNesting[] {
-  if (!declarations.length) return [];
-
-  const relationshipsById = new Map(relationships.map((entry) => [entry.id, entry]));
+  const { report } = context;
   const parents = new Map<string, NestingDeclaration>();
-  const nesting = declarations.map((statement) => {
+  const nesting: ArchiMateNesting[] = [];
+  for (const statement of declarations) {
     const child = statement.child.image;
     const parent = statement.parent.image;
-    for (const token of [statement.child, statement.parent]) {
-      if (entities.get(token.image)?.kind !== 'element') {
-        fail('INVALID_NESTING', token, 'Nesting requires an ArchiMate element. Found "' + token.image + '".');
-      }
+    const nonElements = [statement.child, statement.parent]
+      .filter((token) => entities.get(token.image)?.kind !== 'element');
+    const unreported = nonElements.filter((token) => !context.unknownEndpointIds.has(token.image));
+    for (const token of unreported) {
+      report('INVALID_NESTING', token, 'Nesting requires an ArchiMate element. Found "' + token.image + '".');
     }
+    if (nonElements.length > 0) continue;
     if (child === parent) {
-      fail('INVALID_NESTING', statement.child, 'An element cannot be nested inside itself.');
+      report('INVALID_NESTING', statement.child, 'An element cannot be nested inside itself.');
+      continue;
     }
     if (parents.has(child)) {
-      fail('INVALID_NESTING', statement.child, 'Element "' + child + '" already has a nesting parent.');
+      report('INVALID_NESTING', statement.child, 'Element "' + child + '" already has a nesting parent.');
+      continue;
     }
-    const entry = statement.relationshipId
-      ? findNestingRelationship(statement, statement.relationshipId, relationshipsById, fail)
-      : inferNestingRelationship(statement, relationships, fail);
     parents.set(child, statement);
-    return { child, parent, relationship: entry.id };
-  });
+    const entry = statement.relationshipId
+      ? findNestingRelationship(statement, statement.relationshipId, context)
+      : inferNestingRelationship(statement, context);
+    if (entry) nesting.push({ child, parent, relationship: entry.id });
+  }
 
   const checked = new Set<string>();
   for (const child of parents.keys()) {
@@ -510,7 +767,8 @@ function validateNesting(
       const statement = parents.get(current);
       if (!statement) break;
       if (visited.has(current)) {
-        fail('INVALID_NESTING', statement.child, 'Nesting creates a cycle at "' + current + '".');
+        report('INVALID_NESTING', statement.child, 'Nesting creates a cycle at "' + current + '".');
+        break;
       }
       visited.add(current);
       current = statement.parent.image;
@@ -520,9 +778,16 @@ function validateNesting(
   return nesting;
 }
 
-function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMateModel {
+function validateDeclarations(
+  declarations: Declaration[],
+  diagnostics: DiagnosticCollector,
+): ArchiMateModel | undefined {
+  const report: Report = (code, token, message) => diagnostics.error(code, token, message);
+  let directionDeclared = false;
+  let layoutDeclared = false;
   let diagramDirection: ArchiMateDirection | undefined;
   let diagramLayout: ArchiMateLayout | undefined;
+  const declaredMetadata = new Set<MetadataKey>();
   const diagramMetadata: Partial<Record<MetadataKey, string>> = {};
   const entities = new Map<string, EntityDeclaration>();
   const descriptions = new Map<string, DescriptionDeclaration>();
@@ -534,31 +799,38 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
   for (const statement of declarations) {
     switch (statement.kind) {
       case 'direction':
-        if (diagramDirection) fail('DUPLICATE_DECLARATION', statement.value, 'Direction is already set.');
-        diagramDirection = readDirection(statement.value, fail);
-        break;
-      case 'layout': {
-        const { value } = statement;
-        if (diagramLayout) fail('DUPLICATE_DECLARATION', value, 'Layout is already set.');
-        if (value.image !== 'architecture' && value.image !== 'framework' && value.image !== 'graph') {
-          fail('INVALID_LAYOUT', value, 'Expected layout architecture, framework, or graph.');
+        if (directionDeclared) {
+          report('DUPLICATE_DECLARATION', statement.value, 'Direction is already set.');
+          break;
         }
-        diagramLayout = value.image;
+        directionDeclared = true;
+        diagramDirection = readDirection(statement.value, report);
         break;
-      }
+      case 'layout':
+        if (layoutDeclared) {
+          report('DUPLICATE_DECLARATION', statement.value, 'Layout is already set.');
+          break;
+        }
+        layoutDeclared = true;
+        diagramLayout = readLayout(statement.value, report);
+        break;
       case 'metadata': {
-        const separator = statement.value.image.indexOf(':');
-        const name = statement.value.image.slice(0, separator).trim();
-        const key = name === 'title' ? 'title' : name === 'accTitle' ? 'accTitle' : 'accDescription';
-        if (diagramMetadata[key] !== undefined) {
-          fail('DUPLICATE_DECLARATION', statement.value, name + ' is already set.');
+        const { name, key, value } = readMetadata(statement.value);
+        if (declaredMetadata.has(key)) {
+          report('DUPLICATE_DECLARATION', statement.value, name + ' is already set.');
+          break;
         }
-        diagramMetadata[key] = ensureXmlText(statement.value.image.slice(separator + 1).trim(), statement.value, fail);
+        declaredMetadata.add(key);
+        const text = statement.value.tokenType === metadata && wholeQuotedText.test(value)
+          ? readQuotedText(statement.value, report, name + ' must not be empty.', value)
+          : checkXmlText(value, statement.value, report);
+        if (text !== undefined) diagramMetadata[key] = text;
         break;
       }
       case 'description':
         if (descriptions.has(statement.id.image)) {
-          fail('DUPLICATE_DECLARATION', statement.id, 'Description is already set for "' + statement.id.image + '".');
+          report('DUPLICATE_DECLARATION', statement.id, 'Description is already set for "' + statement.id.image + '".');
+          break;
         }
         descriptions.set(statement.id.image, statement);
         break;
@@ -566,12 +838,21 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
       case 'relationship':
       case 'note':
         if (entities.has(statement.id.image)) {
-          fail('DUPLICATE_ID', statement.id, 'ID "' + statement.id.image + '" is already declared.');
+          report('DUPLICATE_ID', statement.id, 'ID "' + statement.id.image + '" is already declared.');
+          break;
         }
         entities.set(statement.id.image, statement);
         if (statement.kind === 'element') {
           if (!getElementType(statement.type.image)) {
-            fail('UNKNOWN_ELEMENT_TYPE', statement.type, 'Unknown element type "' + statement.type.image + '".');
+            report(
+              'UNKNOWN_ELEMENT_TYPE',
+              statement.type,
+              withSuggestion(
+                'Unknown element type "' + statement.type.image + '".',
+                statement.type.image,
+                Object.keys(elementTypes),
+              ),
+            );
           }
           elementDeclarations.push(statement);
         } else if (statement.kind === 'relationship') {
@@ -591,28 +872,38 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
 
   for (const [id, statement] of descriptions) {
     if (entities.get(id)?.kind !== 'element') {
-      fail('UNKNOWN_ELEMENT', statement.id, 'Description refers to an undeclared element "' + id + '".');
+      report('UNKNOWN_ELEMENT', statement.id, 'Description refers to an undeclared element "' + id + '".');
     }
   }
 
-  const notes: ArchiMateNote[] = noteDeclarations.map((statement) => {
+  const notes: ArchiMateNote[] = [];
+  for (const statement of noteDeclarations) {
     if (statement.anchor && entities.get(statement.anchor.image)?.kind !== 'element') {
-      fail('INVALID_NOTE_TARGET', statement.anchor, 'A note must be placed on a declared ArchiMate element.');
+      report('INVALID_NOTE_TARGET', statement.anchor, 'A note must be placed on a declared ArchiMate element.');
     }
-    return {
-      id: statement.id.image,
-      text: readQuotedText(statement.text, fail),
-      ...(statement.anchor && { on: statement.anchor.image }),
-    };
-  });
+    const text = readQuotedText(statement.text, report, 'Note text must not be empty.');
+    if (text !== undefined) {
+      notes.push({ id: statement.id.image, text, ...(statement.anchor && { on: statement.anchor.image }) });
+    }
+  }
 
-  function endpoint(token: IToken): ElementDeclaration | NoteDeclaration {
+  const unknownEndpointIds = new Set<string>();
+  function endpoint(token: IToken): ElementDeclaration | NoteDeclaration | undefined {
     const entity = entities.get(token.image);
-    if (!entity) return fail('UNKNOWN_ELEMENT', token, 'Unknown element or note "' + token.image + '".');
+    if (!entity) {
+      unknownEndpointIds.add(token.image);
+      report('UNKNOWN_ELEMENT', token, 'Unknown element or note "' + token.image + '".');
+      return undefined;
+    }
     if (entity.kind === 'relationship') {
-      return fail('UNSUPPORTED_ENDPOINT', token, 'Relationship endpoints must be elements or notes.');
+      report('UNSUPPORTED_ENDPOINT', token, 'Relationship endpoints must be elements or notes.');
+      return undefined;
     }
     return entity;
+  }
+
+  function readLabel(token: IToken | undefined): string | undefined {
+    return token && readQuotedText(token, report, 'Relationship label must not be empty. Omit the label instead.');
   }
 
   const usedIds = new Set(entities.keys());
@@ -624,95 +915,286 @@ function validateDeclarations(declarations: Declaration[], fail: Fail): ArchiMat
     return id;
   }
 
+  const invalidRelationshipIds = new Set<string>();
+  const shorthandStatements = new Map<string, ConnectorDeclaration>();
+
+  function warnOnRepeatedShorthand(statement: ConnectorDeclaration, labelText: string | undefined): void {
+    const key = JSON.stringify([
+      statement.source.image, statement.connector.tokenType.name, statement.target.image, labelText ?? null,
+    ]);
+    const original = shorthandStatements.get(key);
+    if (!original) {
+      shorthandStatements.set(key, statement);
+      return;
+    }
+    diagnostics.warning(
+      'DUPLICATE_RELATIONSHIP',
+      statement.source,
+      statement.label ?? statement.target,
+      'This relationship repeats the one on line ' + diagnostics.line(original.source)
+        + '. Remove the copy, or use the long form with distinct IDs if both are intended.',
+    );
+  }
+
   function connectorRelationship(statement: ConnectorDeclaration): ArchiMateRelationship {
     const notation = connectorNotations.get(statement.connector.tokenType);
     if (!notation) throw new Error('Unknown ArchiMate connector token "' + statement.connector.image + '".');
-    const source = endpoint(statement.source).id.image;
-    const target = endpoint(statement.target).id.image;
+    const valid = [endpoint(statement.source), endpoint(statement.target)].every(Boolean);
+    const labelText = readLabel(statement.label);
+    const source = statement.source.image;
+    const target = statement.target.image;
+    const id = generatedRelationshipId(source, notation.type, target);
+    const labelRejected = statement.label !== undefined && labelText === undefined;
+    if (!valid) {
+      invalidRelationshipIds.add(id);
+    } else if (!labelRejected) {
+      warnOnRepeatedShorthand(statement, labelText);
+    }
     return {
-      id: generatedRelationshipId(source, notation.type, target),
+      id,
       type: notation.type,
       source,
       target,
       ...(notation.access && notation.access !== 'unspecified' && { access: notation.access }),
       ...(notation.directed && { directed: true }),
-      ...(statement.label && { label: readQuotedText(statement.label, fail) }),
+      ...(labelText !== undefined && { label: labelText }),
     };
   }
 
-  const relationships: ArchiMateRelationship[] = relationshipDeclarations.map((statement) => {
-    if (statement.kind === 'connector') return connectorRelationship(statement);
+  function declaredRelationship(statement: RelationshipDeclaration): ArchiMateRelationship {
     const type = statement.type.image;
+    let valid = true;
     if (!getRelationshipNotation(type)) {
-      fail('UNKNOWN_RELATIONSHIP_TYPE', statement.type, 'Unknown relationship type "' + type + '".');
+      valid = false;
+      report(
+        'UNKNOWN_RELATIONSHIP_TYPE',
+        statement.type,
+        withSuggestion('Unknown relationship type "' + type + '".', type, relationshipTypes),
+      );
     }
     if (statement.mode && type !== 'access') {
-      fail('INVALID_RELATIONSHIP_PROPERTY', statement.mode, 'Access mode is only valid on access relationships.');
+      report('INVALID_RELATIONSHIP_PROPERTY', statement.mode, 'Access mode is only valid on access relationships.');
     }
     if (statement.directed && type !== 'association') {
-      fail('INVALID_RELATIONSHIP_PROPERTY', statement.directed, '"directed" is only valid on association relationships.');
+      report('INVALID_RELATIONSHIP_PROPERTY', statement.directed, '"directed" is only valid on association relationships.');
     }
-    const mode = statement.mode && readAccessMode(statement.mode, fail);
-    const source = endpoint(statement.source);
-    const target = endpoint(statement.target);
+    const mode = statement.mode && readAccessMode(statement.mode, report);
+    if (![endpoint(statement.source), endpoint(statement.target)].every(Boolean)) valid = false;
+    const labelText = readLabel(statement.label);
+    if (!valid) invalidRelationshipIds.add(statement.id.image);
     return {
       id: statement.id.image,
       type,
-      source: source.id.image,
-      target: target.id.image,
+      source: statement.source.image,
+      target: statement.target.image,
       ...(mode && { access: mode }),
       ...(statement.directed && { directed: true }),
-      ...(statement.label && { label: readQuotedText(statement.label, fail) }),
+      ...(labelText !== undefined && { label: labelText }),
     };
-  });
-  const nesting = validateNesting(nestingDeclarations, entities, relationships, fail);
-  const selectedLayout = diagramLayout ?? (diagramDirection === undefined ? 'architecture' : undefined);
+  }
 
+  const relationships = relationshipDeclarations.map((statement) =>
+    statement.kind === 'connector' ? connectorRelationship(statement) : declaredRelationship(statement));
+  const nesting = validateNesting(nestingDeclarations, entities, {
+    relationships,
+    relationshipsById: new Map(relationships.map((entry) => [entry.id, entry])),
+    invalidRelationshipIds,
+    unknownEndpointIds,
+    report,
+  });
+
+  const elements: ArchiMateElement[] = [];
+  for (const statement of elementDeclarations) {
+    const name = readQuotedText(statement.name, report, 'Element name must not be empty.');
+    const elementDescription = descriptions.get(statement.id.image);
+    const descriptionText = elementDescription && readQuotedText(elementDescription.value, report);
+    if (name !== undefined) {
+      elements.push({
+        id: statement.id.image,
+        type: statement.type.image,
+        name,
+        ...(descriptionText !== undefined && { description: descriptionText }),
+      });
+    }
+  }
+
+  if (diagnostics.hasErrors) return undefined;
+  const selectedLayout = diagramLayout ?? (diagramDirection === undefined ? 'architecture' : undefined);
   return {
     direction: diagramDirection ?? 'TB',
     ...(selectedLayout && { layout: selectedLayout }),
     ...diagramMetadata,
-    elements: elementDeclarations.map((statement) => {
-      const elementDescription = descriptions.get(statement.id.image);
-      return {
-        id: statement.id.image,
-        type: statement.type.image,
-        name: readQuotedText(statement.name, fail),
-        ...(elementDescription && { description: readQuotedText(elementDescription.value, fail) }),
-      };
-    }),
+    elements,
     relationships,
     ...(notes.length > 0 && { notes }),
     ...(nesting.length > 0 && { nesting }),
   };
 }
 
-export function parseArchiMate(source: string, options: ArchiMateParseOptions = {}): ArchiMateModel {
-  const lineOffset = options.lineOffset ?? 0;
-  const fail: Fail = (code, token, message) => {
-    const { startLine, startColumn } = token;
-    if (startLine !== undefined && startLine > 0 && startColumn !== undefined && startColumn > 0) {
-      throw new ArchiMateError(code, startLine + lineOffset, startColumn, message);
-    }
-    const lines = source.split(/\r\n|\n|\r/);
-    throw new ArchiMateError(code, lines.length + lineOffset, (lines.at(-1)?.length ?? 0) + 1, message);
-  };
-  const tokenized = lexer.tokenize(source);
+const quotedTextPrefix = /(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*/y;
+
+function describeInvalidQuotedText(text: string, offset: number): string {
+  quotedTextPrefix.lastIndex = offset + 1;
+  quotedTextPrefix.exec(text);
+  const end = quotedTextPrefix.lastIndex;
+  const character = text[end];
+  if (character === undefined || character === '\n' || character === '\r') {
+    return 'Text is missing its closing double quote.';
+  }
+  if (character === '\\') {
+    return 'Text contains the invalid escape sequence "' + text.slice(end, end + 2) + '". Use "\\\\" for a backslash.';
+  }
+  return 'Text contains a control character. Use an escape sequence such as "\\t" instead.';
+}
+
+function describeLexicalError(text: string, offset: number, length: number): string {
+  const skipped = text.slice(offset, offset + length);
+  const first = String.fromCodePoint(text.codePointAt(offset) ?? 0xfffd);
+  if (first === "'") return 'Unexpected character "\'". Use double quotes for text.';
+  if (first === '"') return describeInvalidQuotedText(text, offset);
+  if (first === '{' && /(?:^|[\r\n])[ \t]*accDescr[ \t]*$/.test(text.slice(0, offset))) {
+    return 'The accDescr block is missing its closing "}".';
+  }
+  if (/^[-.=<>@*|/]+$/.test(skipped)) return '"' + skipped + '" is not a relationship connector.';
+  return 'Unexpected character "' + first + '".';
+}
+
+const relationshipOptionOrder: readonly TokenType[] = [access, directed, label];
+
+// Chevrotain reports a misplaced relationship option as unexpected trailing input; name the ordering rule instead.
+function describeSyntaxError(error: IRecognitionException, tokens: readonly IToken[]): string {
+  const rank = relationshipOptionOrder.indexOf(error.token.tokenType);
+  const index = tokens.indexOf(error.token);
+  if (rank < 0 || index < 0) return error.message;
+  let statementStart = index;
+  while (statementStart > 0 && tokens[statementStart - 1]?.tokenType !== newline) statementStart--;
+  const statement = tokens.slice(statementStart, index);
+  if (statement[0]?.tokenType !== relationship) return error.message;
+  const later = statement.find((token) => relationshipOptionOrder.indexOf(token.tokenType) > rank);
+  return later ? '"' + error.token.image + '" must come before "' + later.image + '".' : error.message;
+}
+
+const yamlWhitespace = /\s/;
+
+function isLineBreak(character: string | undefined): boolean {
+  return character === '\n' || character === '\r';
+}
+
+function isYamlWhitespace(character: string | undefined): boolean {
+  return character !== undefined && yamlWhitespace.test(character);
+}
+
+function lastLineBreakInWhitespaceRun(text: string, from: number): number {
+  let lineBreak = -1;
+  for (let index = from; isYamlWhitespace(text[index]); index++) {
+    if (isLineBreak(text[index])) lineBreak = index;
+  }
+  return lineBreak;
+}
+
+type FrontmatterMatch =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'closed'; readonly length: number }
+  | { readonly kind: 'unclosed'; readonly column: number };
+
+// Mirrors matchFrontMatter in Mermaid 12.3.0 so the validator skips exactly the blocks a Mermaid host strips.
+// Like Mermaid, it expects line breaks already normalized to "\n".
+function matchFrontmatter(text: string): FrontmatterMatch {
+  let cursor = 0;
+  while (isYamlWhitespace(text[cursor]) && !isLineBreak(text[cursor])) cursor++;
+  if (!text.startsWith('---', cursor)) return { kind: 'none' };
+  const openingEnds: number[] = [];
+  for (let index = cursor + 3; isYamlWhitespace(text[index]); index++) {
+    if (isLineBreak(text[index])) openingEnds.push(index);
+  }
+  const [firstOpeningEnd] = openingEnds;
+  if (firstOpeningEnd === undefined) return { kind: 'none' };
+
+  const closingFence = text.slice(0, cursor) + '---';
+  const closingEnd = (index: number): number =>
+    isLineBreak(text[index]) && text.startsWith(closingFence, index + 1)
+      ? lastLineBreakInWhitespaceRun(text, index + 1 + closingFence.length)
+      : -1;
+  let lastClosingFence = -1;
+  for (let index = firstOpeningEnd + 1; index < text.length; index++) {
+    if (closingEnd(index) !== -1) lastClosingFence = index;
+  }
+  const openingEnd = openingEnds.filter((candidate) => candidate < lastClosingFence).at(-1) ?? firstOpeningEnd;
+  for (let index = openingEnd + 1; index <= lastClosingFence; index++) {
+    const end = closingEnd(index);
+    if (end !== -1) return { kind: 'closed', length: end + 1 };
+  }
+  return { kind: 'unclosed', column: cursor + 1 };
+}
+
+// Blanking frontmatter instead of removing it keeps every later token on its original line.
+function blankFrontmatter(text: string): FrontmatterMatch & { readonly text: string } {
+  const normalized = text.replace(/\r\n?/g, '\n');
+  const match = matchFrontmatter(normalized);
+  if (match.kind !== 'closed') return { ...match, text };
+  const lineBreaks = normalized.slice(0, match.length).split('\n').length - 1;
+  const end = text.split(/(?<=\r\n|\r(?!\n)|\n)/).slice(0, lineBreaks).join('').length;
+  return { ...match, text: text.slice(0, end).replace(/[^\r\n]/g, '') + text.slice(end) };
+}
+
+function analyzeArchiMate(source: string, options: ArchiMateParseOptions): ArchiMateValidationResult {
+  const withoutByteOrderMark = source.startsWith('\uFEFF') ? source.slice(1) : source;
+  const frontmatter = blankFrontmatter(withoutByteOrderMark);
+  const { text } = frontmatter;
+  const diagnostics = new DiagnosticCollector(text, options.lineOffset ?? 0);
+  if (frontmatter.kind === 'unclosed') {
+    diagnostics.errorAt(
+      'SYNTAX_ERROR',
+      diagnostics.sourceRange(1, frontmatter.column, 1, frontmatter.column + 3),
+      'The frontmatter block is missing its closing "---" line.',
+    );
+    return { diagnostics: diagnostics.diagnostics };
+  }
+
+  const tokenized = lexer.tokenize(text);
   const lexicalError = tokenized.errors[0];
   if (lexicalError) {
-    throw new ArchiMateError(
+    const line = lexicalError.line ?? 1;
+    const column = lexicalError.column ?? 1;
+    diagnostics.errorAt(
       'LEXICAL_ERROR',
-      (lexicalError.line ?? 1) + lineOffset,
-      lexicalError.column ?? 1,
-      lexicalError.message,
+      diagnostics.sourceRange(line, column, line, column + lexicalError.length),
+      describeLexicalError(text, lexicalError.offset, lexicalError.length),
     );
+    return { diagnostics: diagnostics.diagnostics };
   }
 
   parser.input = tokenized.tokens;
   const tree = parser.document();
   const syntaxError = parser.errors[0];
-  if (syntaxError) fail('SYNTAX_ERROR', syntaxError.token, syntaxError.message);
+  if (syntaxError) {
+    diagnostics.error('SYNTAX_ERROR', syntaxError.token, describeSyntaxError(syntaxError, tokenized.tokens));
+    return { diagnostics: diagnostics.diagnostics };
+  }
   const declarations = visitor.visit(tree);
   if (!Array.isArray(declarations)) throw new Error('Invalid ArchiMate document parse tree.');
-  return validateDeclarations(declarations, fail);
+  const model = validateDeclarations(declarations, diagnostics);
+  return { ...(model && { model }), diagnostics: diagnostics.diagnostics };
+}
+
+/**
+ * Reports every semantic problem in one pass, sorted by position. Lexical and syntax
+ * checks stop at the first problem because later tokens cannot be interpreted reliably.
+ */
+export function validateArchiMate(
+  source: string,
+  options: ArchiMateParseOptions = {},
+): ArchiMateValidationResult {
+  const { model, diagnostics } = analyzeArchiMate(source, options);
+  const sorted = diagnostics.toSorted((left, right) => left.line - right.line || left.column - right.column);
+  return { ...(model && { model }), diagnostics: sorted };
+}
+
+export function parseArchiMate(source: string, options: ArchiMateParseOptions = {}): ArchiMateModel {
+  const { model, diagnostics } = analyzeArchiMate(source, options);
+  // Discovery order, not position order, keeps the thrown error identical to earlier releases.
+  const error = diagnostics.find((entry): entry is ArchiMateErrorDiagnostic => entry.severity === 'error');
+  if (error) throw new ArchiMateError(error.code, error.line, error.column, error.message);
+  if (!model) throw new Error('ArchiMate validation produced neither a model nor an error.');
+  return model;
 }

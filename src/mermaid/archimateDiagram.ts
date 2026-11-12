@@ -7,6 +7,19 @@ import { archimatePalettes, archimateStyles } from "./styles.js";
 
 type DiagramDefinition = Awaited<ReturnType<ExternalDiagramDefinition["loader"]>>["diagram"];
 
+// The markers Mermaid wraps around the name or number of a #name; or #123; sequence.
+const mermaidEntityMarker = /ﬂ°°?(\w+)¶ß/gu;
+
+export interface ArchiMateLogger {
+  warn(message: string): void;
+}
+
+export function toLogger(log: unknown): ArchiMateLogger | undefined {
+  if (typeof log !== "object" || log === null || !("warn" in log)) return undefined;
+  const { warn } = log;
+  return typeof warn === "function" ? { warn: (message) => warn.call(log, message) } : undefined;
+}
+
 export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>): DiagramDefinition {
   if (!Object.hasOwn(archimatePalettes, options.palette)) {
     throw new RangeError(`Unknown ArchiMate palette "${options.palette}".`);
@@ -15,6 +28,7 @@ export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>
   let diagramTitle: string | undefined;
   let frontmatterLineOffset = 0;
   let getConfig: (() => MermaidConfig) | undefined;
+  let logger: ArchiMateLogger | undefined;
 
   return {
     db: {
@@ -45,7 +59,7 @@ export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>
         model = undefined;
         // Mermaid encodes #name; and #123; before dispatch. Quoted ArchiMate
         // text treats these sequences literally, so restore them before parsing.
-        const literalSource = source.replace(/ﬂ°°?(\w+)¶ß/gu, "#$1;");
+        const literalSource = source.replace(mermaidEntityMarker, "#$1;");
         model = parseArchiMate(literalSource, { lineOffset: frontmatterLineOffset });
       },
     },
@@ -55,11 +69,12 @@ export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>
           throw new Error("Parse an ArchiMate diagram before rendering it.");
         }
 
-        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? "", options, getConfig?.());
+        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? "", options, getConfig?.(), logger);
       },
     },
     styles: archimateStyles,
-    injectUtils(_log, _setLogLevel, readConfig: () => MermaidConfig) {
+    injectUtils(log: unknown, _setLogLevel, readConfig: () => MermaidConfig) {
+      logger = toLogger(log);
       getConfig = readConfig;
     },
   };

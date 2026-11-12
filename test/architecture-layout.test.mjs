@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { placeArchitecture } from '../dist/mermaid/architectureLayout.js';
 import { routeArchitecture } from '../dist/mermaid/orthogonalRouter.js';
+import { createArchiMatePlugin } from '../dist/index.js';
 
 const options = {
   rowOrder: ['strategy', 'business', 'application', 'technology', 'implementationAndMigration'],
   padding: 24,
   labelHeight: 0,
+  maxRowWidth: Infinity,
 };
 
 test('framework aligns occupied aspects and layers independently of declaration order', () => {
@@ -168,4 +170,107 @@ test('routes separate parallel edges and a self-loop between placed shapes', () 
       assert.ok(mid.x <= 200 || mid.x >= 300 || mid.y <= -50 || mid.y >= 114);
     }
   }
+});
+
+test('falls back to a direct line and warns when a target is boxed in', () => {
+  const nodes = new Map([
+    ['source', { box: { x: 0, y: 0, width: 100, height: 60 } }],
+    ['target', { box: { x: 200, y: 200, width: 100, height: 60 } }],
+    ['above', { box: { x: 170, y: 170, width: 160, height: 30 } }],
+    ['below', { box: { x: 170, y: 260, width: 160, height: 30 } }],
+    ['left', { box: { x: 170, y: 200, width: 30, height: 60 } }],
+    ['right', { box: { x: 300, y: 200, width: 30, height: 60 } }],
+  ]);
+  const warnings = [];
+  const routes = routeArchitecture(nodes, [{ id: 'boxed', source: 'source', target: 'target' }],
+    { warn: (message) => warnings.push(message) });
+  const route = routes.get('boxed');
+  assert.equal(route.length, 2);
+  const [start, end] = route;
+  const onOutline = ({ x, y, width, height }, point) =>
+    [point.x - x, point.x - x - width, point.y - y, point.y - y - height].some((offset) => offset === 0)
+    && point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height;
+  assert.ok(onOutline(nodes.get('source').box, start));
+  assert.ok(onOutline(nodes.get('target').box, end));
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /"boxed"/);
+  assert.doesNotThrow(() => routeArchitecture(nodes, [{ id: 'quiet', source: 'source', target: 'target' }]));
+  assert.throws(() => routeArchitecture(nodes, [{ id: 'missing', source: 'source', target: 'nowhere' }]),
+    /Missing endpoints for relationship "missing"/);
+});
+
+test('wraps a rank wider than maxRowWidth into balanced rows that keep their order', () => {
+  const services = Array.from({ length: 14 }, (_, index) => `s${index}`);
+  const nodes = [{ id: 'hub', width: 124, height: 54 }, ...services.map((id) => ({ id, width: 124, height: 54 }))];
+  const placements = new Map([
+    ['hub', { row: 'application', column: 'activeStructure', headerHeight: 54 }],
+    ...services.map((id) => [id, { row: 'application', column: 'behavior', headerHeight: 54 }]),
+  ]);
+  const edges = services.map((target) => ({ source: 'hub', target, type: 'realization' }));
+  const unwrapped = placeArchitecture(nodes, placements, edges, options);
+  assert.ok(unwrapped.width > 2000);
+  const wrapped = placeArchitecture(nodes, placements, edges, { ...options, maxRowWidth: 1200 });
+  assert.ok(wrapped.width <= 1200 + 2 * options.padding, `wrapped width was ${wrapped.width}`);
+  const byId = new Map(wrapped.children.map((node) => [node.id, node]));
+  const rows = Map.groupBy(services.map((id) => byId.get(id)), ({ y }) => y);
+  assert.equal(rows.size, 2);
+  const sizes = [...rows.values()].map((row) => row.length);
+  assert.ok(Math.abs(sizes[0] - sizes[1]) <= 1, `row sizes ${sizes}`);
+  const hub = byId.get('hub');
+  for (const row of rows.values()) {
+    const right = Math.max(...row.map(({ x, width }) => x + width));
+    const left = Math.min(...row.map(({ x }) => x));
+    assert.ok(right - left <= 1200);
+    assert.ok(row.every(({ y, height }) => y + height < hub.y));
+  }
+  for (const id of services) {
+    const node = byId.get(id);
+    for (const other of services) {
+      if (other === id) continue;
+      const box = byId.get(other);
+      assert.ok(node.x + node.width <= box.x || box.x + box.width <= node.x
+        || node.y + node.height <= box.y || box.y + box.height <= node.y, `${id} overlaps ${other}`);
+    }
+  }
+});
+
+test('validates the maxRowWidth and background plugin options', () => {
+  for (const maxRowWidth of [0, -1, Number.NaN, Number.NEGATIVE_INFINITY, '640', null]) {
+    assert.throws(() => createArchiMatePlugin({ maxRowWidth }), RangeError, String(maxRowWidth));
+  }
+  assert.doesNotThrow(() => createArchiMatePlugin({ maxRowWidth: 640 }));
+  assert.doesNotThrow(() => createArchiMatePlugin({ maxRowWidth: Number.POSITIVE_INFINITY }));
+  for (const background of ['none', '', 'Theme']) {
+    assert.throws(() => createArchiMatePlugin({ background }), RangeError);
+  }
+  for (const background of ['theme', 'transparent']) {
+    assert.doesNotThrow(() => createArchiMatePlugin({ background }));
+  }
+});
+
+test('bundles relationships of one kind from one element and keeps other kinds apart', () => {
+  const box = (x, y) => ({ box: { x, y, width: 120, height: 54 } });
+  const nodes = new Map([
+    ['hub', box(400, 300)],
+    ['upperLeft', box(0, 0)], ['lowerLeft', box(0, 120)], ['nearLeft', box(200, 120)],
+    ['above', box(400, 120)],
+  ]);
+  const edge = (target, kind) => ({ id: `${kind}-${target}`, source: 'hub', target, kind, targetMarker: true });
+  const edges = [edge('upperLeft', 'serving'), edge('lowerLeft', 'serving'), edge('nearLeft', 'serving'),
+    edge('above', 'serving'), edge('nearLeft', 'flow')];
+  const routes = routeArchitecture(nodes, edges);
+  const start = (id) => routes.get(id)[0];
+  assert.deepEqual(start('serving-upperLeft'), start('serving-lowerLeft'));
+  assert.deepEqual(start('serving-upperLeft'), start('serving-nearLeft'));
+  assert.equal(start('serving-upperLeft').x, 400, 'the left bundle leaves the left side');
+  assert.equal(start('serving-above').y, 300, 'the element straight above gets its own anchor on the top side');
+  assert.notDeepEqual(start('flow-nearLeft'), start('serving-nearLeft'), 'another kind gets another anchor');
+  const left = routes.bundles.get('serving-upperLeft');
+  assert.deepEqual(routes.bundles.get('serving-lowerLeft'), left);
+  assert.equal(left.sharedEnd, 'start');
+  assert.equal(routes.bundles.has('flow-nearLeft'), false);
+  const [first, second] = [routes.get('serving-upperLeft'), routes.get('serving-lowerLeft')];
+  assert.deepEqual(first.slice(0, 2).map(({ y }) => y), second.slice(0, 2).map(({ y }) => y), 'members share a trunk');
+  const plain = routeArchitecture(nodes, edges.map(({ kind, ...rest }) => rest));
+  assert.equal(plain.bundles.size, 0, 'relationships without a kind are never bundled');
 });

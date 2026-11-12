@@ -24,7 +24,7 @@ npm run build
 node dist/cli.js validate examples/order-fulfilment.mmd
 ```
 
-The validator reports syntax and structural errors with their line and column. Use `-` as the input path to read from standard input.
+The validator prints every problem it finds as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `-` as the input path to read from standard input.
 
 To render a standalone SVG, install Playwright's Chromium browser and run the checkout's render command.
 
@@ -88,6 +88,8 @@ Architecture layout is the default when you omit both `layout` and `direction`. 
 
 Use `layout framework` to arrange the same layers in fixed aspect columns. Passive Structure, Behavior, and Active Structure run from left to right, with Motivation on the far right. Only occupied rows and columns take up space.
 
+In architecture and framework layout, relationships of the same type that leave or arrive at the same element share one anchor and run as one line until they branch to their other ends. Access relationships bundle only with the same access mode, and directed Associations only with directed ones. A bundle splits by direction: elements directly above or below get a straight line from that side, and the rest share a trunk from the left or right side. Each relationship type gets its own anchor, and anchors are ordered so that trunks nest without crossing. Branch points are plain line joins, not ArchiMate junctions. Self-relationships and relationships of notes are never bundled.
+
 Architecture and framework layouts preserve nesting. A parent with its own layer determines the placement of its container. Groups without their own layer that contain elements from multiple layers are placed separately.
 
 Use `layout graph` for a relationship-driven layout. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL`, and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
@@ -109,7 +111,7 @@ archimate-beta
 
 Nesting supports Composition, Aggregation, Assignment, Realization, and Access from parent to child. For Specialization, the child specializes its parent. The nesting declaration must reference a relationship between the named child and parent. Each child can have one visual parent. The enclosure represents the relationship and the renderer also draws its line when it carries a label or explicit read/write mode. [ArchiMate 3.2 specification, §§3.8, 5.1, 5.2.2, and 5.4.1](https://publications.opengroup.org/standards/archimate/c226)
 
-Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to attach it to an element's top edge. Notes are diagram annotations and can be endpoints of the supported relationship types. Use `\n` for a line break.
+Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to attach it to an element's top edge (its bottom edge in `direction BT`, so relationships leaving upward stay clear of it). Notes are diagram annotations and can be endpoints of the supported relationship types. Use `\n` for a line break.
 
 ## Host integration
 
@@ -141,7 +143,7 @@ document.querySelector('#diagram').innerHTML = svg;
 
 Live rendering requires a host that registers the external diagram. For GitHub Markdown, commit the `.mmd` source alongside its exported SVG and link to the SVG with `![Diagram title](order-fulfilment.svg)`. This keeps the model reviewable in Git and the image visible to readers. [Mermaid external diagram API](https://mermaid.js.org/config/setup/mermaid/interfaces/Mermaid.html#registerexternaldiagrams)
 
-Use the DSL's `title:`, `accTitle:`, and `accDescr:` declarations if the same file must pass the standalone validator. Mermaid YAML frontmatter is processed by the host before the plugin sees the source. To show a Mermaid directive as literal text in a quoted label, escape its percent signs as `\u0025`.
+The standalone validator skips a leading YAML frontmatter block that starts and ends with a `---` line, and it reports line numbers for the whole file. It does not read the frontmatter's content, so use the DSL's `title:`, `accTitle:`, and `accDescr:` declarations for metadata the validator should check. Use `accDescr { … }` for a description that spans several lines, and do not combine it with `accDescr:`. A `%%` that follows a space ends a `title:`, `accTitle:` or `accDescr:` value as a comment. To keep it, or to use escapes such as `\u0025`, write the whole value as one double-quoted string, for example `title: "Load %% budget"`. To show a Mermaid directive as literal text in a quoted label, escape its percent signs as `\u0025`.
 
 ### Theme, palette, and viewport
 
@@ -158,6 +160,8 @@ archimate-beta
   element applicationComponent billing "Billing"
 ```
 
+With `theme: 'base'`, the diagram reads `background`, `lineColor`, `textColor`, `fontFamily` and `fontSize` from `themeVariables`, so its canvas, font and font size follow Mermaid's base theme instead of the ArchiMate presets. The background may be any CSS colour, including named colours and colours with an alpha channel. Dark mode follows `themeVariables.darkMode`, or the brightness of `background` when `darkMode` is not set. A transparent, partly transparent or unrecognised background keeps the ArchiMate light or dark preset for both the canvas and the lines and text. Line and text colours that would be unreadable on the background are replaced by the preset colours. `fontFamily` accepts family names made of letters, digits, spaces, hyphens and underscores, separated by commas and optionally quoted. `fontSize` is limited to 8–32 pixels. Other themes use the ArchiMate light or dark presets.
+
 The `archimate` export uses the Modern palette and 24 pixels of outer diagram padding. It fits narrow containers up to the SVG's natural width. To set palette and viewport options, register an instance from `createArchiMatePlugin`.
 
 ```js
@@ -172,6 +176,12 @@ await mermaid.registerExternalDiagrams([
 
 `diagramPadding` accepts any finite, nonnegative number. `useMaxWidth` defaults to `true`. Set it to `false` to render the SVG at its natural size.
 
+`maxRowWidth` sets the widest row, in pixels, that architecture layout places before wrapping a row onto a second line in the same layer. It accepts any number greater than 0 and defaults to 1200. Set it to `Infinity` to turn wrapping off.
+
+`background` is `'theme'` (default), which paints the diagram canvas in the theme background, or `'transparent'`, which omits the canvas so the host page shows through. Relationship labels and hollow markers keep the theme background in both cases.
+
+Element names wrap at about 200 pixels and relationship labels at about 180 pixels. ELK, which lays out `layout graph` diagrams, loads on demand the first time one is rendered.
+
 ## Language API
 
 Use the language entry point to validate or inspect a diagram in Node.js without a browser.
@@ -185,7 +195,11 @@ const model = parseArchiMate(source);
 console.log(model.elements);
 ```
 
-Validation errors throw `ArchiMateError` with a code, line, and column. The same entry point exports `elementTypes` and `relationshipTypes` for tooling that needs the catalogue.
+Validation errors throw `ArchiMateError` with a code, line, and column. `parseArchiMate` stops at the first error.
+
+For editors and linters, `validateArchiMate(source, options)` returns `{ model, diagnostics }`. It reports every semantic error, and warnings such as `DUPLICATE_RELATIONSHIP`, each with `code`, `severity`, `message`, `line`, `column`, `endLine` and `endColumn`. Lines and columns are 1-based and `endColumn` is exclusive. `model` is present only when there are no errors.
+
+The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue.
 
 ## Coverage
 

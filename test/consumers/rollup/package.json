@@ -1,0 +1,13 @@
+{
+  "name": "archimate-consumer-rollup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rollup --config rollup.config.mjs"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "29.0.3",
+    "@rollup/plugin-node-resolve": "16.0.3",
+    "rollup": "4.66.0"
+  }
+}

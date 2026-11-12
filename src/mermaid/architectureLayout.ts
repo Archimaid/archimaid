@@ -149,8 +149,8 @@ export function placeArchitecture(
   nodes: readonly MeasuredNode[],
   placements: ReadonlyMap<string, Placement>,
   relationships: readonly LayoutRelationship[],
-  { rowOrder, padding, labelHeight, framework = false }: {
-    rowOrder: readonly string[]; padding: number; labelHeight: number; framework?: boolean;
+  { rowOrder, padding, labelHeight, framework = false, maxRowWidth }: {
+    rowOrder: readonly string[]; padding: number; labelHeight: number; framework?: boolean; maxRowWidth: number;
   },
 ): Arrangement {
   const successors = new Map<string, string[]>();
@@ -164,7 +164,7 @@ export function placeArchitecture(
   const gap = Math.max(nodeGap, labelHeight + 16);
   const arrange = (members: readonly SizedNode[]) => framework
     ? grid(members, rows, gap)
-    : placeConnectedLayers(members, ["motivation", ...rows], relationships, gap, cellGap);
+    : placeConnectedLayers(members, ["motivation", ...rows], relationships, gap, cellGap, maxRowWidth);
 
   function size(node: MeasuredNode): SizedNode {
     const placement = placements.get(node.id);
