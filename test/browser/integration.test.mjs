@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { elementTypes } from 'archi-mermaid/language';
+import { elementTypes } from 'archimaid/language';
 import { renderStandaloneSvg, withMermaidPage } from './helpers.mjs';
 
 const example = (name) => readFile(new URL(`../../examples/${name}.mmd`, import.meta.url), 'utf8');

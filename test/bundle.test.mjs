@@ -13,7 +13,7 @@ test('the browser host loads ELK in its own chunk, apart from the renderer', asy
       sourcefile: 'archimate-browser-host.js',
       contents: `
         import mermaid from 'mermaid';
-        import { archimate } from 'archi-mermaid';
+        import { archimate } from 'archimaid';
         mermaid.initialize({ startOnLoad: false });
         await mermaid.registerExternalDiagrams([archimate]);
       `,
