@@ -4,6 +4,15 @@
   "description": "An external Mermaid diagram type for ArchiMate 3.2",
   "keywords": ["archimate", "mermaid", "enterprise-architecture", "diagrams-as-code"],
   "license": "MIT",
+  "author": "Berny (https://github.com/Berny-art)",
+  "homepage": "https://github.com/Berny-art/Archimate-for-Mermaid#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Berny-art/Archimate-for-Mermaid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Berny-art/Archimate-for-Mermaid/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -14,7 +23,8 @@
     "examples/*.svg",
     "skills/archimate-mermaid/SKILL.md",
     "docs/reference.md",
-    "FOUNDATION.md"
+    "FOUNDATION.md",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
