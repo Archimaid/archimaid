@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { elementTypes, relationshipTypes } from 'archimate-mermaid/language';
-import { withMermaidPage } from './mermaid-browser.mjs';
+import { closeMermaidBrowser, withMermaidPage } from './mermaid-browser.mjs';
 
 const elements = Object.entries(elementTypes).map(([type, { name, category }]) => ({
   type, name, category,
@@ -180,6 +180,6 @@ const svg = await withMermaidPage(async (page) => {
     await page.locator('#element-preview-sheet').screenshot({ path: pngPath });
   }
   return sheet.svg;
-});
+}).finally(closeMermaidBrowser);
 await writeFile(new URL('../examples/element-preview.svg', import.meta.url), svg + '\n');
 console.log(`Rendered ${elements.length} elements and ${legend.length} relationship examples in examples/element-preview.svg`);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { parseArchiMate } from '../../dist/language.js';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 function countCrossings(paths) {
   const segments = paths.flatMap((points, path) => points.slice(1).map((end, index) => ({

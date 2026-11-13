@@ -1,83 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
-
-function geometry(page, id, source) {
-  return page.evaluate(async ({ id, source }) => {
-    const mermaid = await globalThis.archimateHost;
-    const { svg } = await mermaid.render(id, source);
-    const container = document.createElement('div');
-    container.innerHTML = svg;
-    document.body.append(container);
-    try {
-      const root = container.querySelector('svg');
-      const toSvg = root.getScreenCTM().inverse();
-      const box = (element) => {
-        const { left, top, right, bottom } = element.getBoundingClientRect();
-        const start = new DOMPoint(left, top).matrixTransform(toSvg);
-        const end = new DOMPoint(right, bottom).matrixTransform(toSvg);
-        return { left: start.x, top: start.y, right: end.x, bottom: end.y };
-      };
-      const elements = {};
-      const titles = {};
-      for (const group of container.querySelectorAll('[data-archimate-element]')) {
-        elements[group.dataset.archimateElement] = box(group.querySelector('.archimate-outline'));
-        titles[group.dataset.archimateElement] = box(group.querySelector('text'));
-      }
-      const notes = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-note]'),
-        (group) => [group.dataset.archimateNote, box(group.querySelector('.archimate-note-outline'))]));
-      const edges = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-relationship]'), (edge) => [
-        edge.dataset.archimateRelationship,
-        {
-          points: edge.getAttribute('d').slice(2).split(' L ').map((pair) => {
-            const [x, y] = pair.split(' ').map(Number);
-            const { x: left, y: top } = new DOMPoint(x, y).matrixTransform(toSvg.multiply(edge.getScreenCTM()));
-            return { x: left, y: top };
-          }),
-          markers: edge.hasAttribute('marker-start') || edge.hasAttribute('marker-end'),
-          markerStart: edge.hasAttribute('marker-start'),
-          markerEnd: edge.hasAttribute('marker-end'),
-        },
-      ]));
-      const labels = Array.from(container.querySelectorAll('.archimate-edge-label'),
-        (label) => ({ text: label.textContent, ...box(label.previousElementSibling) }));
-      return {
-        width: root.viewBox.baseVal.width, height: root.viewBox.baseVal.height,
-        elements, titles, notes, edges, labels,
-      };
-    } finally {
-      container.remove();
-    }
-  }, { id, source });
-}
-
-const tolerance = 0.01;
+import {
+  DEFAULT_MAX_ROW_WIDTH, INTERIOR_INSET, POSITION_TOLERANCE, hubSource, orthogonal, renderGeometry as geometry,
+  segmentEntersInterior, segments, withMermaidPage,
+} from './helpers.mjs';
 
 function side(box, { x, y }) {
-  if (Math.abs(x - box.left) < tolerance) return 'left';
-  if (Math.abs(x - box.right) < tolerance) return 'right';
-  if (Math.abs(y - box.top) < tolerance) return 'top';
-  if (Math.abs(y - box.bottom) < tolerance) return 'bottom';
+  if (Math.abs(x - box.left) < POSITION_TOLERANCE) return 'left';
+  if (Math.abs(x - box.right) < POSITION_TOLERANCE) return 'right';
+  if (Math.abs(y - box.top) < POSITION_TOLERANCE) return 'top';
+  if (Math.abs(y - box.bottom) < POSITION_TOLERANCE) return 'bottom';
   return undefined;
 }
 
-function segments(points) {
-  return points.slice(1).map((end, index) => [points[index], end]);
-}
-
-function orthogonal(points) {
-  return segments(points).every(([a, b]) => Math.abs(a.x - b.x) < tolerance || Math.abs(a.y - b.y) < tolerance);
-}
-
-function segmentEntersInterior([a, b], { left, top, right, bottom }, inset = 0.5) {
-  const minX = Math.min(a.x, b.x);
-  const maxX = Math.max(a.x, b.x);
-  const minY = Math.min(a.y, b.y);
-  const maxY = Math.max(a.y, b.y);
-  return minX < right - inset && maxX > left + inset && minY < bottom - inset && maxY > top + inset;
-}
-
-function boxesOverlap(a, b, inset = 0.5) {
+function boxesOverlap(a, b, inset = INTERIOR_INSET) {
   return a.left < b.right - inset && a.right > b.left + inset && a.top < b.bottom - inset && a.bottom > b.top + inset;
 }
 
@@ -160,14 +96,10 @@ a -.=> b : "y"`;
   });
 });
 
-const hubSource = ['archimate-beta', 'element applicationComponent hub "Hub"',
-  ...Array.from({ length: 14 }, (_, index) =>
-    `element applicationService s${index} "Service ${index}"\nhub ..|> s${index}`)].join('\n');
-
 async function checkWrappedHub(maxRowWidth) {
   const rendered = await withMermaidPage((page) => geometry(page, `wrapped-hub-${maxRowWidth}`, hubSource),
     maxRowWidth === undefined ? undefined : { maxRowWidth });
-  const limit = maxRowWidth ?? 1200;
+  const limit = maxRowWidth ?? DEFAULT_MAX_ROW_WIDTH;
   assert.ok(rendered.width <= limit + 100, `diagram width was ${rendered.width} for a ${limit} px row limit`);
   const services = Object.entries(rendered.elements).filter(([id]) => id !== 'hub').map(([, box]) => box);
   const rows = Map.groupBy(services, ({ top }) => Math.round(top));

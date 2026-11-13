@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 const longName = 'A very long application component name that keeps going until it reaches ninety characters';
 const unbroken = 'A'.repeat(70);

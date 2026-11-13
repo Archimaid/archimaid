@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 async function checkNestedNotes(layout) {
   const source = `archimate-beta

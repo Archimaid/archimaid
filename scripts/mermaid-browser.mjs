@@ -3,13 +3,20 @@ import { build } from 'esbuild';
 import { chromium } from 'playwright';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const hostScripts = new Map();
+let sharedBrowser;
 
-async function bundleHost(pluginOptions) {
+function bundleHost(pluginOptions) {
   const pluginExport = pluginOptions === undefined ? 'archimate' : 'createArchiMatePlugin';
   // JSON has no Infinity, which is a meaningful option value (maxRowWidth: Infinity turns wrapping off).
   const options = Object.entries(pluginOptions ?? {}).map(([name, value]) =>
     `${JSON.stringify(name)}: ${typeof value === 'number' ? String(value) : JSON.stringify(value)}`);
   const plugin = pluginOptions === undefined ? 'plugin' : `plugin({ ${options.join(', ')} })`;
+  if (!hostScripts.has(plugin)) hostScripts.set(plugin, buildHost(pluginExport, plugin));
+  return hostScripts.get(plugin);
+}
+
+async function buildHost(pluginExport, plugin) {
   const { outputFiles } = await build({
     stdin: {
       resolveDir: root,
@@ -33,11 +40,13 @@ async function bundleHost(pluginOptions) {
   return outputFiles[0].text;
 }
 
+// One browser and one host bundle per option set serve every call in a process. Call closeMermaidBrowser when done.
 export async function withMermaidPage(action, pluginOptions) {
   const hostScript = await bundleHost(pluginOptions);
-  const browser = await chromium.launch();
+  sharedBrowser ??= chromium.launch();
+  const context = await (await sharedBrowser).newContext();
   try {
-    const page = await browser.newPage();
+    const page = await context.newPage();
     await page.setContent('<!doctype html><meta charset="utf-8"><title>ArchiMate render</title>');
     await page.addScriptTag({ content: hostScript });
     await page.evaluate(async () => {
@@ -45,8 +54,14 @@ export async function withMermaidPage(action, pluginOptions) {
     });
     return await action(page);
   } finally {
-    await browser.close();
+    await context.close();
   }
+}
+
+export async function closeMermaidBrowser() {
+  const browser = sharedBrowser;
+  sharedBrowser = undefined;
+  await (await browser)?.close();
 }
 
 export function renderStandaloneSvg(page, id, source) {

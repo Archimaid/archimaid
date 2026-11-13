@@ -1,57 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { hubSource, renderGeometry as geometry, segmentEntersInterior, segments, withMermaidPage } from './helpers.mjs';
 
-// Elements and relationships share the graph group's coordinates, so raw path data compares exactly.
-function geometry(page, id, source) {
-  return page.evaluate(async ({ id, source }) => {
-    const mermaid = await globalThis.archimateHost;
-    const { svg } = await mermaid.render(id, source);
-    const container = document.createElement('div');
-    container.innerHTML = svg;
-    document.body.append(container);
-    try {
-      const root = container.querySelector('svg');
-      const box = (group, selector) => {
-        const { x, y, width, height } = group.querySelector(selector).getBBox();
-        const { e, f } = group.transform.baseVal.consolidate().matrix;
-        return { left: x + e, top: y + f, right: x + e + width, bottom: y + f + height };
-      };
-      const elements = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-element]'),
-        (group) => [group.dataset.archimateElement, box(group, '.archimate-outline')]));
-      const notes = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-note]'),
-        (group) => [group.dataset.archimateNote, box(group, '.archimate-note-outline')]));
-      const edges = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-relationship]'), (edge) => [
-        edge.dataset.archimateRelationship,
-        {
-          type: edge.dataset.archimateType,
-          points: edge.getAttribute('d').slice(2).split(' L ').map((pair) => {
-            const [x, y] = pair.split(' ').map(Number);
-            return { x, y };
-          }),
-          dashOffset: edge.getAttribute('stroke-dashoffset'),
-          length: edge.getTotalLength(),
-        },
-      ]));
-      const labels = Array.from(container.querySelectorAll('.archimate-edge-label'), (label) => {
-        const backing = label.previousElementSibling;
-        const [x, y, width, height] = ['x', 'y', 'width', 'height'].map((name) => Number(backing.getAttribute(name)));
-        return { text: label.textContent, left: x, top: y, right: x + width, bottom: y + height };
-      });
-      return { width: root.viewBox.baseVal.width, elements, notes, edges, labels };
-    } finally {
-      container.remove();
-    }
-  }, { id, source });
-}
-
-const segments = (points) => points.slice(1).map((end, index) => [points[index], end]);
 const horizontal = ([a, b]) => a.y === b.y;
-
-function entersBox([a, b], { left, top, right, bottom }) {
-  return Math.min(a.x, b.x) < right - 0.5 && Math.max(a.x, b.x) > left + 0.5
-    && Math.min(a.y, b.y) < bottom - 0.5 && Math.max(a.y, b.y) > top + 0.5;
-}
 
 // Collinear segments that share more than a point.
 function overlapLength([a, b], [c, d]) {
@@ -84,15 +35,11 @@ function assertClearOfElements(rendered, label, ignore = () => false) {
     for (const segment of segments(points)) {
       for (const [element, box] of Object.entries(rendered.elements)) {
         if (ignore(id, element)) continue;
-        assert.equal(entersBox(segment, box), false, `${label}: ${id} crosses ${element}`);
+        assert.equal(segmentEntersInterior(segment, box), false, `${label}: ${id} crosses ${element}`);
       }
     }
   }
 }
-
-const hubSource = ['archimate-beta', 'element applicationComponent hub "Hub"',
-  ...Array.from({ length: 14 }, (_, index) =>
-    `element applicationService s${index} "Service ${index}"\nhub ..|> s${index}`)].join('\n');
 
 const mixedSource = `archimate-beta
 element applicationComponent hub "Hub"

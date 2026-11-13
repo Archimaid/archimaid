@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 const nested = `archimate-beta
 direction LR
