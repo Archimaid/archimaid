@@ -1,6 +1,6 @@
-import type { MermaidConfig } from "mermaid";
+import type { MermaidConfig } from 'mermaid';
 
-export const svgNamespace = "http://www.w3.org/2000/svg";
+export const svgNamespace = 'http://www.w3.org/2000/svg';
 
 export type SvgAttributes = Record<string, string | number>;
 
@@ -21,7 +21,7 @@ export function append<Tag extends keyof SVGElementTagNameMap>(
 export function browserColour(svg: SVGSVGElement, colour: string): string | undefined {
   const view = svg.ownerDocument.defaultView;
   if (!view) return undefined;
-  const probe = append(svg, "g", { visibility: "hidden" });
+  const probe = append(svg, 'g', { visibility: 'hidden' });
   try {
     probe.style.color = colour;
     return probe.style.color ? view.getComputedStyle(probe).color : undefined;
@@ -31,11 +31,11 @@ export function browserColour(svg: SVGSVGElement, colour: string): string | unde
 }
 
 export function getSvg(id: string, config: MermaidConfig | undefined): SVGSVGElement {
-  const frame = config?.securityLevel === "sandbox" ? document.getElementById(`i${id}`) : null;
+  const frame = config?.securityLevel === 'sandbox' ? document.getElementById(`i${id}`) : null;
   const targetDocument = frame instanceof HTMLIFrameElement ? frame.contentDocument : document;
   const svg = targetDocument?.querySelector<SVGSVGElement>(`svg#${CSS.escape(id)}`);
   if (svg?.namespaceURI !== svgNamespace) {
-    throw new Error("Mermaid did not create the ArchiMate SVG container.");
+    throw new Error('Mermaid did not create the ArchiMate SVG container.');
   }
   return svg;
 }

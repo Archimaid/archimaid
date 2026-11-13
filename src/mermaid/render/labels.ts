@@ -1,11 +1,15 @@
-import type { ElkPoint } from "elkjs/lib/elk.bundled.js";
-import { required } from "../invariant.js";
-import type { RouteBundle } from "../orthogonalRouter.js";
-import type { Placement } from "./place.js";
-import type { LabelStrategy, RoutedEdge } from "./route.js";
+import type { ElkPoint } from 'elkjs/lib/elk.bundled.js';
+import { required } from '../invariant.js';
+import type { RouteBundle } from '../orthogonalRouter.js';
+import type { Placement } from './place.js';
+import type { LabelStrategy, RoutedEdge } from './route.js';
 import {
-  compoundLabelInset, edgeLabelPadding, type EdgeAppearance, type PositionedNode, type TextMetrics,
-} from "./shared.js";
+  compoundLabelInset,
+  edgeLabelPadding,
+  type EdgeAppearance,
+  type PositionedNode,
+  type TextMetrics,
+} from './shared.js';
 
 // How far along a segment, from its start, other paths run on top of it.
 function coveredFrom(start: ElkPoint, end: ElkPoint, others: readonly (readonly ElkPoint[])[]): number {
@@ -32,10 +36,12 @@ function coveredFrom(start: ElkPoint, end: ElkPoint, others: readonly (readonly 
 
 // The part of a bundled path that no sibling shares, starting where it leaves the common trunk.
 function unsharedBranch(
-  points: readonly ElkPoint[], siblings: readonly (readonly ElkPoint[])[], sharedEnd: "start" | "end",
+  points: readonly ElkPoint[],
+  siblings: readonly (readonly ElkPoint[])[],
+  sharedEnd: 'start' | 'end',
 ): ElkPoint[] {
-  const path = sharedEnd === "start" ? [...points] : points.toReversed();
-  const others = sharedEnd === "start" ? siblings : siblings.map((sibling) => sibling.toReversed());
+  const path = sharedEnd === 'start' ? [...points] : points.toReversed();
+  const others = sharedEnd === 'start' ? siblings : siblings.map((sibling) => sibling.toReversed());
   for (let index = 1; index < path.length; index++) {
     const start = path[index - 1];
     const end = path[index];
@@ -46,7 +52,7 @@ function unsharedBranch(
     const fraction = covered / length;
     const split = { x: start.x + (end.x - start.x) * fraction, y: start.y + (end.y - start.y) * fraction };
     const branch = [split, ...path.slice(index)];
-    return sharedEnd === "start" ? branch : branch.toReversed();
+    return sharedEnd === 'start' ? branch : branch.toReversed();
   }
   return [...points];
 }
@@ -76,8 +82,10 @@ function edgeLabelPosition(
 ): ElkPoint {
   const width = metrics.width + edgeLabelPadding;
   const { height } = metrics;
-  const isClear = ({ x, y }: ElkPoint) => !obstacles.some((box) => x < box.x + box.width
-    && x + width > box.x && y < box.y + box.height && y + height > box.y);
+  const isClear = ({ x, y }: ElkPoint) =>
+    !obstacles.some(
+      (box) => x < box.x + box.width && x + width > box.x && y < box.y + box.height && y + height > box.y,
+    );
   if (hint && isClear(hint) && (!hintNearRoute || labelNearRoute({ ...hint, width, height }, points))) {
     return hint;
   }
@@ -92,8 +100,8 @@ function edgeLabelPosition(
   let fallback: ElkPoint | undefined;
   for (const { start, end } of segments) {
     const horizontal = Math.abs(start.x - end.x) >= Math.abs(start.y - end.y);
-    const along = horizontal ? "x" : "y";
-    const across = horizontal ? "y" : "x";
+    const along = horizontal ? 'x' : 'y';
+    const across = horizontal ? 'y' : 'x';
     const alongSize = horizontal ? width : height;
     const acrossSize = horizontal ? height : width;
     const preferred = (start[along] + end[along] - alongSize) / 2;
@@ -104,24 +112,27 @@ function edgeLabelPosition(
     const position = (coordinate: number, side: number) =>
       horizontal ? { x: coordinate, y: side } : { x: side, y: coordinate };
     const nearby = [0, -0.5, 0.5].flatMap((shift) =>
-      sides.map((side) => position(preferred + shift * alongSize, side)));
+      sides.map((side) => position(preferred + shift * alongSize, side)),
+    );
     fallback ??= nearby[0];
     const nearbyClear = nearby.find(isClear);
     if (nearbyClear) return nearbyClear;
     if (!searchAllSegments) break;
 
     for (const side of sides) {
-      const candidates = obstacles.flatMap((box) => {
-        const acrossEnd = box[across] + (horizontal ? box.height : box.width);
-        if (side >= acrossEnd || side + acrossSize <= box[across]) return [];
-        return [box[along] - alongSize - 0.5, box[along] + (horizontal ? box.width : box.height) + 0.5];
-      }).filter((coordinate) => coordinate >= minimum && coordinate <= maximum)
+      const candidates = obstacles
+        .flatMap((box) => {
+          const acrossEnd = box[across] + (horizontal ? box.height : box.width);
+          if (side >= acrossEnd || side + acrossSize <= box[across]) return [];
+          return [box[along] - alongSize - 0.5, box[along] + (horizontal ? box.width : box.height) + 0.5];
+        })
+        .filter((coordinate) => coordinate >= minimum && coordinate <= maximum)
         .sort((a, b) => Math.abs(a - preferred) - Math.abs(b - preferred));
       const clear = candidates.map((coordinate) => position(coordinate, side)).find(isClear);
       if (clear) return clear;
     }
   }
-  return required(fallback, "a label position beside the route");
+  return required(fallback, 'a label position beside the route');
 }
 
 export interface PlacedEdge {
@@ -134,9 +145,9 @@ export interface PlacedEdge {
 export function placeLabels(routed: readonly RoutedEdge[], placement: Placement, architecture: boolean): PlacedEdge[] {
   const labelObstacles = [
     ...placement.notes.map(({ box }) => box),
-    ...placement.elements.map(({ appearance, box, compound }) => compound
-      ? { ...box, height: compoundLabelInset + appearance.label.height }
-      : box),
+    ...placement.elements.map(({ appearance, box, compound }) =>
+      compound ? { ...box, height: compoundLabelInset + appearance.label.height } : box,
+    ),
   ];
   return routed.map(({ id, appearance, points, label, bundle }) => {
     const selfLoop = architecture && appearance.relationship.source === appearance.relationship.target;
@@ -145,14 +156,19 @@ export function placeLabels(routed: readonly RoutedEdge[], placement: Placement,
       : [];
     // A loop's label belongs beside its outer segment, away from the element it returns to. A bundled
     // relationship's label belongs on its own branch, where it cannot be mistaken for its siblings'.
-    const labelPoints = selfLoop ? points.slice(1, 3)
-      : bundle ? unsharedBranch(points, siblings, bundle.sharedEnd) : points;
+    const labelPoints = selfLoop
+      ? points.slice(1, 3)
+      : bundle
+        ? unsharedBranch(points, siblings, bundle.sharedEnd)
+        : points;
     const labelPosition = appearance.label
       ? edgeLabelPosition(labelPoints, appearance.label, labelObstacles, label)
       : undefined;
     if (architecture && labelPosition && appearance.label) {
       labelObstacles.push({
-        ...labelPosition, width: appearance.label.width + edgeLabelPadding, height: appearance.label.height,
+        ...labelPosition,
+        width: appearance.label.width + edgeLabelPadding,
+        height: appearance.label.height,
       });
     }
     return { appearance, points, labelPosition, bundle };

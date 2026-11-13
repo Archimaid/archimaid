@@ -1,16 +1,30 @@
-import type { ElkPoint } from "elkjs/lib/elk.bundled.js";
-import type { ArchiMatePluginOptions } from "../archimateDetector.js";
-import type { RouteBundle } from "../orthogonalRouter.js";
-import type { DiagramColours, PaletteColours } from "../styles.js";
-import type { PlacedEdge } from "./labels.js";
-import type { Placement } from "./place.js";
+import type { ElkPoint } from 'elkjs/lib/elk.bundled.js';
+import type { ArchiMatePluginOptions } from '../archimateDetector.js';
+import type { RouteBundle } from '../orthogonalRouter.js';
+import type { DiagramColours, PaletteColours } from '../styles.js';
+import type { PlacedEdge } from './labels.js';
+import type { Placement } from './place.js';
 import {
-  cornerRadius, edgeLabelClass, edgeLabelPadding, iconInset, iconRightInset, iconScale, iconSize, labelClass,
-  compoundLabelInset, noteFold, titleClass,
-  type EdgeAppearance, type Marker, type NodeAppearance, type NoteAppearance, type PositionedNode, type TextMetrics,
-} from "./shared.js";
-import { append, type SvgAttributes } from "./svg.js";
-import type { Viewport } from "./viewport.js";
+  cornerRadius,
+  edgeLabelClass,
+  edgeLabelPadding,
+  iconInset,
+  iconRightInset,
+  iconScale,
+  iconSize,
+  labelClass,
+  compoundLabelInset,
+  noteFold,
+  titleClass,
+  type EdgeAppearance,
+  type Marker,
+  type NodeAppearance,
+  type NoteAppearance,
+  type PositionedNode,
+  type TextMetrics,
+} from './shared.js';
+import { append, type SvgAttributes } from './svg.js';
+import type { Viewport } from './viewport.js';
 
 function drawText(
   parent: SVGElement,
@@ -22,15 +36,15 @@ function drawText(
   // Text already named by an accessible group or relationship would otherwise be announced twice.
   hidden = false,
 ): void {
-  const label = append(parent, "text", {
+  const label = append(parent, 'text', {
     class: className,
     fill: colour,
-    "text-anchor": "middle",
-    "dominant-baseline": "central",
-    ...(hidden ? { "aria-hidden": "true" } : {}),
+    'text-anchor': 'middle',
+    'dominant-baseline': 'central',
+    ...(hidden ? { 'aria-hidden': 'true' } : {}),
   });
   for (const [index, line] of metrics.lines.entries()) {
-    append(label, "tspan", {
+    append(label, 'tspan', {
       x: centerX,
       y: centerY + (index - (metrics.lines.length - 1) / 2) * metrics.lineHeight,
     }).textContent = line;
@@ -45,58 +59,58 @@ function drawNode(
   palette: PaletteColours,
 ): void {
   const { x, y, width, height } = box;
-  const group = append(graph, "g", {
+  const group = append(graph, 'g', {
     transform: `translate(${x} ${y})`,
-    "data-archimate-element": element.id,
-    "data-archimate-type": element.type,
-    role: "graphics-symbol",
-    "aria-roledescription": type.name,
-    "aria-label": element.name,
+    'data-archimate-element': element.id,
+    'data-archimate-type': element.type,
+    role: 'graphics-symbol',
+    'aria-roledescription': type.name,
+    'aria-label': element.name,
   });
-  append(group, "title").textContent = `${type.name}: ${element.name}`;
+  append(group, 'title').textContent = `${type.name}: ${element.name}`;
   if (element.description) {
-    append(group, "desc").textContent = element.description;
+    append(group, 'desc').textContent = element.description;
   }
 
-  const colours = element.type === "location" ? palette.location : palette.elements[type.category];
+  const colours = element.type === 'location' ? palette.location : palette.elements[type.category];
   const stroke: SvgAttributes = {
-    class: "archimate-outline",
+    class: 'archimate-outline',
     fill: colours.fill,
     stroke: colours.stroke,
-    "stroke-width": 1.25,
+    'stroke-width': 1.25,
   };
-  if (notation.outline === "chamfered") {
+  if (notation.outline === 'chamfered') {
     const r = cornerRadius;
-    append(group, "path", {
+    append(group, 'path', {
       ...stroke,
       d: `M ${r} 0 H ${width - r} L ${width} ${r} V ${height - r} L ${width - r} ${height} H ${r} L 0 ${height - r} V ${r} Z`,
     });
   } else {
-    if (notation.outline === "grouping") {
-      stroke["stroke-dasharray"] = "5 3";
+    if (notation.outline === 'grouping') {
+      stroke['stroke-dasharray'] = '5 3';
     }
-    append(group, "rect", {
+    append(group, 'rect', {
       ...stroke,
       width,
       height,
-      rx: notation.outline === "rounded" ? cornerRadius : 0,
+      rx: notation.outline === 'rounded' ? cornerRadius : 0,
     });
   }
 
   if (notation.icon?.length) {
-    const icon = append(group, "g", {
-      class: "archimate-icon",
+    const icon = append(group, 'g', {
+      class: 'archimate-icon',
       transform: `translate(${width - iconRightInset(notation.outline) - iconSize} ${iconInset}) scale(${iconScale})`,
-      "aria-hidden": "true",
+      'aria-hidden': 'true',
       stroke: colours.text,
-      "stroke-width": 1.15,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
+      'stroke-width': 1.15,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
     });
     for (const path of notation.icon) {
-      append(icon, "path", {
+      append(icon, 'path', {
         d: path.d,
-        fill: path.fill === "ink" ? colours.text : "none",
+        fill: path.fill === 'ink' ? colours.text : 'none',
       });
     }
   }
@@ -108,74 +122,78 @@ function drawNote(
   graph: SVGGElement,
   { note, label }: NoteAppearance,
   box: PositionedNode,
-  noteColours: PaletteColours["note"],
+  noteColours: PaletteColours['note'],
 ): void {
   const { x, y, width, height } = box;
-  const group = append(graph, "g", {
+  const group = append(graph, 'g', {
     transform: `translate(${x} ${y})`,
-    "data-archimate-note": note.id,
-    role: "graphics-symbol",
-    "aria-roledescription": "note",
-    "aria-label": note.text,
+    'data-archimate-note': note.id,
+    role: 'graphics-symbol',
+    'aria-roledescription': 'note',
+    'aria-label': note.text,
   });
-  append(group, "title").textContent = note.text;
-  append(group, "path", {
-    class: "archimate-note-outline",
+  append(group, 'title').textContent = note.text;
+  append(group, 'path', {
+    class: 'archimate-note-outline',
     d: `M 0 0 H ${width - noteFold} L ${width} ${noteFold} V ${height} H 0 Z`,
     fill: noteColours.fill,
     stroke: noteColours.stroke,
-    "stroke-width": 1.25,
-    "stroke-dasharray": "5 3",
-    "stroke-linejoin": "round",
+    'stroke-width': 1.25,
+    'stroke-dasharray': '5 3',
+    'stroke-linejoin': 'round',
   });
-  append(group, "path", {
+  append(group, 'path', {
     d: `M ${width - noteFold} 0 V ${noteFold} H ${width} Z`,
     fill: noteColours.fold,
   });
-  append(group, "path", {
+  append(group, 'path', {
     d: `M ${width - noteFold} 0 V ${noteFold} H ${width}`,
-    fill: "none",
+    fill: 'none',
     stroke: noteColours.stroke,
-    "stroke-width": 1,
+    'stroke-width': 1,
   });
   drawText(group, label, labelClass, width / 2, height / 2, noteColours.text, true);
 }
 
 const markerShapes = {
-  filledDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: "relationship" },
-  openDiamond: { d: "M 0 0 -6 -4 -12 0 -6 4 Z", fill: "canvas" },
-  filledDot: { d: "M 0 0 a 3.5 3.5 0 1 0 -7 0 a 3.5 3.5 0 1 0 7 0 Z", fill: "relationship" },
-  openArrow: { d: "M -8 -4 0 0 -8 4", fill: "none" },
-  filledArrow: { d: "M 0 0 -9 -4 -9 4 Z", fill: "relationship" },
-  openTriangle: { d: "M 0 0 -10 -5 -10 5 Z", fill: "canvas" },
-  singleBarb: { d: "M -8 -4 0 0", fill: "none" },
-} satisfies Record<Marker, { d: string; fill: "relationship" | "canvas" | "none" }>;
+  filledDiamond: { d: 'M 0 0 -6 -4 -12 0 -6 4 Z', fill: 'relationship' },
+  openDiamond: { d: 'M 0 0 -6 -4 -12 0 -6 4 Z', fill: 'canvas' },
+  filledDot: { d: 'M 0 0 a 3.5 3.5 0 1 0 -7 0 a 3.5 3.5 0 1 0 7 0 Z', fill: 'relationship' },
+  openArrow: { d: 'M -8 -4 0 0 -8 4', fill: 'none' },
+  filledArrow: { d: 'M 0 0 -9 -4 -9 4 Z', fill: 'relationship' },
+  openTriangle: { d: 'M 0 0 -10 -5 -10 5 Z', fill: 'canvas' },
+  singleBarb: { d: 'M -8 -4 0 0', fill: 'none' },
+} satisfies Record<Marker, { d: string; fill: 'relationship' | 'canvas' | 'none' }>;
 
 function markerReference(defs: SVGDefsElement, prefix: string, marker: Marker, colours: DiagramColours): string {
   const id = `${prefix}-${marker}`;
   if (!defs.querySelector(`#${id}`)) {
-    const element = append(defs, "marker", {
+    const element = append(defs, 'marker', {
       id,
-      viewBox: "-14 -7 16 14",
+      viewBox: '-14 -7 16 14',
       markerWidth: 16,
       markerHeight: 14,
-      markerUnits: "userSpaceOnUse",
-      orient: "auto-start-reverse",
+      markerUnits: 'userSpaceOnUse',
+      orient: 'auto-start-reverse',
       refX: 0,
       refY: 0,
     });
     const { d, fill } = markerShapes[marker];
     if (colours.relationshipOutline) {
-      append(element, "path", {
-        d, fill: "none", stroke: colours.relationshipOutline, "stroke-width": 3, "stroke-linejoin": "round",
+      append(element, 'path', {
+        d,
+        fill: 'none',
+        stroke: colours.relationshipOutline,
+        'stroke-width': 3,
+        'stroke-linejoin': 'round',
       });
     }
-    append(element, "path", {
+    append(element, 'path', {
       d,
-      fill: fill === "none" ? "none" : colours[fill],
+      fill: fill === 'none' ? 'none' : colours[fill],
       stroke: colours.relationship,
-      "stroke-width": 1,
-      "stroke-linejoin": "round",
+      'stroke-width': 1,
+      'stroke-linejoin': 'round',
     });
   }
   return `url(#${id})`;
@@ -188,49 +206,52 @@ function drawEdge(
   { relationship, notation, accessibleName }: EdgeAppearance,
   points: readonly ElkPoint[],
   colours: DiagramColours,
-  pass: "outline" | "line" | "both",
+  pass: 'outline' | 'line' | 'both',
   bundle: RouteBundle | undefined,
 ): void {
   const segments = points.map(({ x, y }) => `${x} ${y}`);
   const attrs: SvgAttributes = {
-    d: `M ${segments.join(" L ")}`,
-    fill: "none",
+    d: `M ${segments.join(' L ')}`,
+    fill: 'none',
     stroke: colours.relationship,
-    "stroke-width": 1.3,
+    'stroke-width': 1.3,
   };
-  if (notation.line === "dashed") {
-    attrs["stroke-dasharray"] = "6 4";
-  } else if (notation.line === "dotted") {
-    attrs["stroke-dasharray"] = "1 3";
-    attrs["stroke-linecap"] = "round";
+  if (notation.line === 'dashed') {
+    attrs['stroke-dasharray'] = '6 4';
+  } else if (notation.line === 'dotted') {
+    attrs['stroke-dasharray'] = '1 3';
+    attrs['stroke-linecap'] = 'round';
   }
   // Dashes start at the path's start. Members that share their end count the pattern back from it
   // instead, so the shared part shows one pattern rather than several out of phase.
-  if (bundle?.sharedEnd === "end" && notation.line !== "solid") {
-    attrs["stroke-dashoffset"] = -polylineLength(points);
+  if (bundle?.sharedEnd === 'end' && notation.line !== 'solid') {
+    attrs['stroke-dashoffset'] = -polylineLength(points);
   }
   // White relationships can cross the light fill of a nested element.
-  if (colours.relationshipOutline && pass !== "line") {
-    append(graph, "path", {
-      ...attrs, stroke: colours.relationshipOutline, "stroke-width": 3.3, "aria-hidden": "true",
+  if (colours.relationshipOutline && pass !== 'line') {
+    append(graph, 'path', {
+      ...attrs,
+      stroke: colours.relationshipOutline,
+      'stroke-width': 3.3,
+      'aria-hidden': 'true',
     });
   }
-  if (pass === "outline") return;
-  if (notation.start !== "none") {
-    attrs["marker-start"] = markerReference(defs, prefix, notation.start, colours);
+  if (pass === 'outline') return;
+  if (notation.start !== 'none') {
+    attrs['marker-start'] = markerReference(defs, prefix, notation.start, colours);
   }
-  if (notation.end !== "none") {
-    attrs["marker-end"] = markerReference(defs, prefix, notation.end, colours);
+  if (notation.end !== 'none') {
+    attrs['marker-end'] = markerReference(defs, prefix, notation.end, colours);
   }
-  const edge = append(graph, "path", {
+  const edge = append(graph, 'path', {
     ...attrs,
-    "data-archimate-relationship": relationship.id,
-    "data-archimate-type": relationship.type,
-    role: "graphics-symbol",
-    "aria-roledescription": "relationship",
-    "aria-label": accessibleName,
+    'data-archimate-relationship': relationship.id,
+    'data-archimate-type': relationship.type,
+    role: 'graphics-symbol',
+    'aria-roledescription': 'relationship',
+    'aria-label': accessibleName,
   });
-  append(edge, "title").textContent = accessibleName;
+  append(edge, 'title').textContent = accessibleName;
 }
 
 function polylineLength(points: readonly ElkPoint[]): number {
@@ -242,11 +263,23 @@ function polylineLength(points: readonly ElkPoint[]): number {
 
 function drawEdgeLabel(graph: SVGGElement, metrics: TextMetrics, position: ElkPoint, colours: DiagramColours): void {
   const { x, y } = position;
-  append(graph, "rect", {
-    x, y, width: metrics.width + edgeLabelPadding, height: metrics.height, fill: colours.canvas, "aria-hidden": "true",
+  append(graph, 'rect', {
+    x,
+    y,
+    width: metrics.width + edgeLabelPadding,
+    height: metrics.height,
+    fill: colours.canvas,
+    'aria-hidden': 'true',
   });
-  drawText(graph, metrics, edgeLabelClass, x + (metrics.width + edgeLabelPadding) / 2, y + metrics.height / 2,
-    colours.text, true);
+  drawText(
+    graph,
+    metrics,
+    edgeLabelClass,
+    x + (metrics.width + edgeLabelPadding) / 2,
+    y + metrics.height / 2,
+    colours.text,
+    true,
+  );
 }
 
 export interface DrawInputs {
@@ -257,19 +290,20 @@ export interface DrawInputs {
   readonly title: TextMetrics | undefined;
   readonly palette: PaletteColours;
   readonly colours: DiagramColours;
-  readonly background: Required<ArchiMatePluginOptions>["background"];
+  readonly background: Required<ArchiMatePluginOptions>['background'];
 }
 
 export function drawDiagram(
-  svg: SVGSVGElement, { id, viewport, placement, edges, title, palette, colours, background }: DrawInputs,
+  svg: SVGSVGElement,
+  { id, viewport, placement, edges, title, palette, colours, background }: DrawInputs,
 ): void {
   const { width, height, graphWidth, left, top, titleOffset, padding } = viewport;
-  const prefix = `archimate-${Array.from(id, (char) => char.codePointAt(0)?.toString(16)).join("-")}`;
-  const defs = append(svg, "defs");
-  if (background === "theme") {
-    append(svg, "rect", { width, height, fill: colours.canvas, "aria-hidden": "true" });
+  const prefix = `archimate-${Array.from(id, (char) => char.codePointAt(0)?.toString(16)).join('-')}`;
+  const defs = append(svg, 'defs');
+  if (background === 'theme') {
+    append(svg, 'rect', { width, height, fill: colours.canvas, 'aria-hidden': 'true' });
   }
-  const graph = append(svg, "g", {
+  const graph = append(svg, 'g', {
     transform: `translate(${(width - graphWidth) / 2 - left} ${titleOffset - top})`,
   });
 
@@ -281,14 +315,15 @@ export function drawDiagram(
   const drawnBundles = new Set<string>();
   for (const { appearance, points, bundle } of edges) {
     if (!bundle) {
-      drawEdge(graph, defs, prefix, appearance, points, colours, "both", undefined);
+      drawEdge(graph, defs, prefix, appearance, points, colours, 'both', undefined);
       continue;
     }
     if (drawnBundles.has(bundle.id)) continue;
     drawnBundles.add(bundle.id);
     const members = edges.filter((edge) => edge.bundle?.id === bundle.id);
-    for (const pass of ["outline", "line"] as const) {
-      for (const member of members) drawEdge(graph, defs, prefix, member.appearance, member.points, colours, pass, bundle);
+    for (const pass of ['outline', 'line'] as const) {
+      for (const member of members)
+        drawEdge(graph, defs, prefix, member.appearance, member.points, colours, pass, bundle);
     }
   }
   for (const { appearance, box, compound } of placement.elements) {

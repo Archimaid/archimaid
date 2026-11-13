@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  DEFAULT_MAX_ROW_WIDTH, INTERIOR_INSET, POSITION_TOLERANCE, hubSource, orthogonal, renderGeometry as geometry,
-  segmentEntersInterior, segments, withMermaidPage,
+  DEFAULT_MAX_ROW_WIDTH,
+  INTERIOR_INSET,
+  POSITION_TOLERANCE,
+  hubSource,
+  orthogonal,
+  renderGeometry as geometry,
+  segmentEntersInterior,
+  segments,
+  withMermaidPage,
 } from './helpers.mjs';
 
 function side(box, { x, y }) {
@@ -33,7 +40,11 @@ a ==> a
 a @==> b
 inner --> inner`;
       const rendered = await geometry(page, `self-loop-${layout}`, source);
-      for (const [id, owner] of [['a__triggering__a', 'a'], ['a__triggering__a_2', 'a'], ['inner__serving__inner', 'inner']]) {
+      for (const [id, owner] of [
+        ['a__triggering__a', 'a'],
+        ['a__triggering__a_2', 'a'],
+        ['inner__serving__inner', 'inner'],
+      ]) {
         const { points } = rendered.edges[id];
         const box = rendered.elements[owner];
         assert.ok(points.length >= 4, `${layout} ${id} has ${points.length} points`);
@@ -97,11 +108,15 @@ a -.=> b : "y"`;
 });
 
 async function checkWrappedHub(maxRowWidth) {
-  const rendered = await withMermaidPage((page) => geometry(page, `wrapped-hub-${maxRowWidth}`, hubSource),
-    maxRowWidth === undefined ? undefined : { maxRowWidth });
+  const rendered = await withMermaidPage(
+    (page) => geometry(page, `wrapped-hub-${maxRowWidth}`, hubSource),
+    maxRowWidth === undefined ? undefined : { maxRowWidth },
+  );
   const limit = maxRowWidth ?? DEFAULT_MAX_ROW_WIDTH;
   assert.ok(rendered.width <= limit + 100, `diagram width was ${rendered.width} for a ${limit} px row limit`);
-  const services = Object.entries(rendered.elements).filter(([id]) => id !== 'hub').map(([, box]) => box);
+  const services = Object.entries(rendered.elements)
+    .filter(([id]) => id !== 'hub')
+    .map(([, box]) => box);
   const rows = Map.groupBy(services, ({ top }) => Math.round(top));
   assert.ok(rows.size > 1);
   for (const row of rows.values()) {
@@ -123,9 +138,12 @@ test('a wide rank wraps at the default maximum row width', () => checkWrappedHub
 test('the maxRowWidth option narrows wrapped ranks', () => checkWrappedHub(600));
 
 test('maxRowWidth: Infinity keeps a wide rank on one row', async () => {
-  const rendered = await withMermaidPage((page) => geometry(page, 'unwrapped-hub', hubSource),
-    { maxRowWidth: Number.POSITIVE_INFINITY });
-  const services = Object.entries(rendered.elements).filter(([id]) => id !== 'hub').map(([, box]) => box);
+  const rendered = await withMermaidPage((page) => geometry(page, 'unwrapped-hub', hubSource), {
+    maxRowWidth: Number.POSITIVE_INFINITY,
+  });
+  const services = Object.entries(rendered.elements)
+    .filter(([id]) => id !== 'hub')
+    .map(([, box]) => box);
   assert.equal(new Set(services.map(({ top }) => Math.round(top))).size, 1);
   assert.ok(rendered.width > 2000, `diagram width was ${rendered.width}`);
 });
@@ -156,7 +174,10 @@ c2 ..> d`;
           assert.equal(segmentEntersInterior(segment, rendered.notes.n), false, `${direction} ${id} crosses its note`);
         }
       }
-      assert.ok(orthogonal(rendered.edges.c2__access__d.points), `${direction} the host's own relationship is not orthogonal`);
+      assert.ok(
+        orthogonal(rendered.edges.c2__access__d.points),
+        `${direction} the host's own relationship is not orthogonal`,
+      );
       assert.ok(side(rendered.elements.d, rendered.edges.n__association__d.points.at(-1)), direction);
       assert.ok(side(rendered.elements.c1, rendered.edges.n__association__c1.points.at(-1)), direction);
     }
@@ -190,10 +211,15 @@ m --> f`;
           }
         }
       }
-      const ends = Object.values(rendered.edges).flatMap(({ points }) => [points[0], points.at(-1)])
+      const ends = Object.values(rendered.edges)
+        .flatMap(({ points }) => [points[0], points.at(-1)])
         .filter((point) => side(rendered.notes.m, point));
       assert.equal(ends.length, 3, direction);
-      assert.equal(new Set(ends.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`)).size, 3, `${direction} note exits coincide`);
+      assert.equal(
+        new Set(ends.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`)).size,
+        3,
+        `${direction} note exits coincide`,
+      );
     }
   });
 });
@@ -230,8 +256,11 @@ c2 ..> d`,
   await withMermaidPage(async (page) => {
     for (const direction of directions) {
       for (const [name, { compounds, source }] of Object.entries(diagrams)) {
-        const rendered = await geometry(page, `clearance-${name}-${direction}`,
-          `archimate-beta\ndirection ${direction}\n${source}`);
+        const rendered = await geometry(
+          page,
+          `clearance-${name}-${direction}`,
+          `archimate-beta\ndirection ${direction}\n${source}`,
+        );
         const blocked = { ...rendered.notes, ...compoundTitles(rendered, compounds) };
         for (const [id, { points }] of Object.entries(rendered.edges)) {
           for (const segment of segments(points)) {

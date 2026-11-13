@@ -1,13 +1,13 @@
-import type { ElkPoint } from "elkjs/lib/elk.bundled.js";
-import type { ArchiMateModel } from "../../archimate/model.js";
-import type { ArchiMateLogger } from "../archimateDiagram.js";
-import { ancestors } from "../hierarchy.js";
-import { bundleKind, routeArchitecture, type RouteBundle, type RoutingNode } from "../orthogonalRouter.js";
-import { clearDecorations, clipCorner, overlayRoute, routePoints } from "./elkRoutes.js";
-import type { LayoutGraph } from "./graph.js";
-import type { DiagramLayout } from "./layout.js";
-import type { Placement } from "./place.js";
-import { usesArchitectureLayout, type EdgeAppearance, type EdgeEndpoint } from "./shared.js";
+import type { ElkPoint } from 'elkjs/lib/elk.bundled.js';
+import type { ArchiMateModel } from '../../archimate/model.js';
+import type { ArchiMateLogger } from '../archimateDiagram.js';
+import { ancestors } from '../hierarchy.js';
+import { bundleKind, routeArchitecture, type RouteBundle, type RoutingNode } from '../orthogonalRouter.js';
+import { clearDecorations, clipCorner, overlayRoute, routePoints } from './elkRoutes.js';
+import type { LayoutGraph } from './graph.js';
+import type { DiagramLayout } from './layout.js';
+import type { Placement } from './place.js';
+import { usesArchitectureLayout, type EdgeAppearance, type EdgeEndpoint } from './shared.js';
 
 export interface LabelStrategy {
   // A position the layout engine suggested, tried before searching.
@@ -36,31 +36,44 @@ export interface RouteInputs {
   readonly logger: ArchiMateLogger | undefined;
 }
 
-function architectureRoutes(
-  { model, graph, placement, parents, logger }: RouteInputs,
-): ReturnType<typeof routeArchitecture> {
+function architectureRoutes({
+  model,
+  graph,
+  placement,
+  parents,
+  logger,
+}: RouteInputs): ReturnType<typeof routeArchitecture> {
   const noteHosts = new Map((model.notes ?? []).map((note) => [note.id, note.on]));
   const routingNodes = new Map<string, RoutingNode>();
   for (const [key, endpoint] of placement.endpoints) {
     const parent = parents.get(noteHosts.get(key) ?? key);
     const obstacles = placement.decorations.get(key);
     routingNodes.set(key, {
-      box: endpoint.box, ...(parent && { parent }), ...(obstacles && { decorations: obstacles }),
+      box: endpoint.box,
+      ...(parent && { parent }),
+      ...(obstacles && { decorations: obstacles }),
     });
   }
-  return routeArchitecture(routingNodes, Array.from(graph.edges).flatMap(([edgeId, appearance]) =>
-    appearance.overlayLane === undefined
-      ? [{
-        id: edgeId,
-        source: appearance.relationship.source,
-        target: appearance.relationship.target,
-        sourceMarker: appearance.notation.start !== "none",
-        targetMarker: appearance.notation.end !== "none",
-        ...(noteHosts.has(appearance.relationship.source) || noteHosts.has(appearance.relationship.target)
-          ? {}
-          : { bundling: bundleKind(appearance.relationship) }),
-      }]
-      : []), logger);
+  return routeArchitecture(
+    routingNodes,
+    Array.from(graph.edges).flatMap(([edgeId, appearance]) =>
+      appearance.overlayLane === undefined
+        ? [
+            {
+              id: edgeId,
+              source: appearance.relationship.source,
+              target: appearance.relationship.target,
+              sourceMarker: appearance.notation.start !== 'none',
+              targetMarker: appearance.notation.end !== 'none',
+              ...(noteHosts.has(appearance.relationship.source) || noteHosts.has(appearance.relationship.target)
+                ? {}
+                : { bundling: bundleKind(appearance.relationship) }),
+            },
+          ]
+        : [],
+    ),
+    logger,
+  );
 }
 
 function endpointsOf(placement: Placement, appearance: EdgeAppearance): readonly [EdgeEndpoint, EdgeEndpoint] {
@@ -74,12 +87,14 @@ function endpointsOf(placement: Placement, appearance: EdgeAppearance): readonly
 
 // Relationships within one attached-note group run in a channel beside the host, in either layout.
 function overlayPoints(
-  graph: LayoutGraph, appearance: EdgeAppearance, source: EdgeEndpoint, target: EdgeEndpoint,
+  graph: LayoutGraph,
+  appearance: EdgeAppearance,
+  source: EdgeEndpoint,
+  target: EdgeEndpoint,
 ): ElkPoint[] | undefined {
   const host = source.overlayHost ?? target.overlayHost;
-  const laneCount = appearance.overlayKey === undefined
-    ? undefined
-    : graph.overlayLaneCounts.get(appearance.overlayKey);
+  const laneCount =
+    appearance.overlayKey === undefined ? undefined : graph.overlayLaneCounts.get(appearance.overlayKey);
   return host && laneCount && appearance.overlayLane !== undefined
     ? overlayRoute(source, target, host, (appearance.overlayLane + 1) / (laneCount + 1))
     : undefined;
@@ -105,7 +120,11 @@ function routeArchitectureEdges(inputs: RouteInputs): RoutedEdge[] {
       points[points.length - 1] = clipCorner(end, previous, target);
     }
     return {
-      id, appearance, points, label: { hintNearRoute: false, searchAllSegments: true }, bundle: planned.bundles.get(id),
+      id,
+      appearance,
+      points,
+      label: { hintNearRoute: false, searchAllSegments: true },
+      bundle: planned.bundles.get(id),
     };
   });
 }
@@ -115,7 +134,7 @@ function routeElkEdges({ model, graph, layout, placement, parents }: RouteInputs
   return (layout.root.edges ?? []).map((route) => {
     const appearance = graph.edges.get(route.id);
     if (!appearance) {
-      throw new Error("ELK returned an unknown ArchiMate relationship.");
+      throw new Error('ELK returned an unknown ArchiMate relationship.');
     }
     const [source, target] = endpointsOf(placement, appearance);
     let points = overlayPoints(graph, appearance, source, target);
@@ -127,19 +146,25 @@ function routeElkEdges({ model, graph, layout, placement, parents }: RouteInputs
       }
       points = clearDecorations(
         routePoints(route, source, target),
-        [...placement.notes.filter(({ appearance: { note } }) => note.id !== sourceId && note.id !== targetId)
-          .map(({ box }) => box), ...Array.from(placement.decorations.values()).flat()],
+        [
+          ...placement.notes
+            .filter(({ appearance: { note } }) => note.id !== sourceId && note.id !== targetId)
+            .map(({ box }) => box),
+          ...Array.from(placement.decorations.values()).flat(),
+        ],
         placement.elements.filter(({ appearance: { element } }) => !containers.has(element.id)).map(({ box }) => box),
-        source, target,
+        source,
+        target,
       );
     }
     const suggested = appearance.overlayLane === undefined ? route.labels?.[0] : undefined;
-    const hint = suggested?.x !== undefined && suggested.y !== undefined && (suggested.x !== 0 || suggested.y !== 0)
-      ? { x: suggested.x, y: suggested.y }
-      : undefined;
+    const hint =
+      suggested?.x !== undefined && suggested.y !== undefined && (suggested.x !== 0 || suggested.y !== 0)
+        ? { x: suggested.x, y: suggested.y }
+        : undefined;
     const [sourceNode] = route.sources;
     const [targetNode] = route.targets;
-    const touchesNestedNode = graph.nested.has(sourceNode ?? "") || graph.nested.has(targetNode ?? "");
+    const touchesNestedNode = graph.nested.has(sourceNode ?? '') || graph.nested.has(targetNode ?? '');
     const label = { ...(hint && { hint }), hintNearRoute: touchesNestedNode, searchAllSegments: false };
     return { id: route.id, appearance, points, label, bundle: undefined };
   });

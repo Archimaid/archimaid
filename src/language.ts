@@ -9,13 +9,14 @@ export type {
   ArchiMateWarningCode,
   ArchiMateWarningDiagnostic,
 } from './archimate/parser.js';
-export {
-  elementTypes,
-  getElementType,
-  relationshipNames,
-  relationshipTypes,
+export { elementTypes, getElementType, relationshipNames, relationshipTypes } from './archimate/catalogue.js';
+export type {
+  AccessMode,
+  SpecifiedAccessMode,
+  ElementAspect,
+  ElementType,
+  RelationshipType,
 } from './archimate/catalogue.js';
-export type { AccessMode, SpecifiedAccessMode, ElementAspect, ElementType, RelationshipType } from './archimate/catalogue.js';
 export type {
   ArchiMateDirection,
   ArchiMateElement,

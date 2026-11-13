@@ -13,7 +13,10 @@ export default defineConfig(
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
-      '@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoopConditions: 'only-allowed-literals' }],
+      '@typescript-eslint/no-unnecessary-condition': [
+        'error',
+        { allowConstantLoopConditions: 'only-allowed-literals' },
+      ],
     },
   },
   {

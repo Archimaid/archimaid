@@ -62,8 +62,8 @@ test('the CLI prints warnings and still passes a diagram without errors', () => 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     result.stderr,
-    '<stdin>:5:1: warning: This relationship repeats the one on line 4. '
-      + 'Remove the copy, or use the long form with distinct IDs if both are intended.\n',
+    '<stdin>:5:1: warning: This relationship repeats the one on line 4. ' +
+      'Remove the copy, or use the long form with distinct IDs if both are intended.\n',
   );
   assert.match(result.stdout, /^<stdin>: diagram syntax and structure checks passed$/m);
 });
@@ -99,10 +99,23 @@ test('the CLI validates directories and Markdown blocks, and reports file lines 
     mkdirSync(join(directory, 'nested'));
     writeFileSync(join(directory, 'nested', 'flowchart.mmd'), 'flowchart LR\n  a --> b\n');
     writeFileSync(join(directory, 'valid.mmd'), 'archimate-beta\n  element businessRole a "A"\n');
-    writeFileSync(join(directory, 'guide.md'), [
-      '# Guide', '', '```mermaid', 'flowchart LR', '```', '', '~~~mermaid',
-      'archimate-beta', '  element businessRole a "A"', '  a --> missing', '~~~', '',
-    ].join('\n'));
+    writeFileSync(
+      join(directory, 'guide.md'),
+      [
+        '# Guide',
+        '',
+        '```mermaid',
+        'flowchart LR',
+        '```',
+        '',
+        '~~~mermaid',
+        'archimate-beta',
+        '  element businessRole a "A"',
+        '  a --> missing',
+        '~~~',
+        '',
+      ].join('\n'),
+    );
     const guide = join(directory, 'guide.md');
 
     const text = spawnSync(process.execPath, [cli, 'validate', directory], { encoding: 'utf8' });
@@ -119,7 +132,10 @@ test('the CLI validates directories and Markdown blocks, and reports file lines 
     );
 
     const github = spawnSync(process.execPath, [cli, 'validate', '--format', 'github', guide], { encoding: 'utf8' });
-    assert.match(github.stdout, /^::error file=.*guide\.md,line=10,col=9,endLine=10,endColumn=\d+,title=UNKNOWN_ELEMENT::Unknown element/);
+    assert.match(
+      github.stdout,
+      /^::error file=.*guide\.md,line=10,col=9,endLine=10,endColumn=\d+,title=UNKNOWN_ELEMENT::Unknown element/,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -61,7 +61,9 @@ test('keeps mixed groups intact and places all process children when a flow cycl
     { source: 'loop', target: 'loop', type: 'triggering' },
     { source: 'first', target: 'other', type: 'triggering' },
   ];
-  const { children: [mixed, process] } = placeArchitecture(nodes, placements, flows, options);
+  const {
+    children: [mixed, process],
+  } = placeArchitecture(nodes, placements, flows, options);
   const [loop, other, first] = process.children;
   assert.ok(first.x + first.width < other.x);
   assert.ok(other.x + other.width < loop.x);
@@ -92,7 +94,9 @@ test('places same-layer triggering across containers and aligns the service with
     { source: 'sell', target: 'deliver', type: 'triggering' },
     { source: 'service', target: 'deliver', type: 'serving' },
   ];
-  const { children: [delivery, service, sales] } = placeArchitecture(nodes, placements, edges, options);
+  const {
+    children: [delivery, service, sales],
+  } = placeArchitecture(nodes, placements, edges, options);
   const [deliver] = delivery.children;
   const [sell] = sales.children;
   assert.ok(sell.x + sell.width < deliver.x);
@@ -113,7 +117,10 @@ test('routes aligned shapes straight and separates parallel arrowheads', () => {
     { id: 'back', source: 'b', target: 'a' },
   ];
   const { routes } = routeArchitecture(nodes, edges);
-  assert.deepEqual(routes.get('direct'), [{ x: 60, y: 60 }, { x: 60, y: 160 }]);
+  assert.deepEqual(routes.get('direct'), [
+    { x: 60, y: 60 },
+    { x: 60, y: 160 },
+  ]);
   const back = routes.get('back');
   assert.equal(back.length, 2);
   assert.equal(back[0].x, back[1].x);
@@ -182,21 +189,27 @@ test('falls back to a direct line and warns when a target is boxed in', () => {
     ['right', { box: { x: 300, y: 200, width: 30, height: 60 } }],
   ]);
   const warnings = [];
-  const { routes } = routeArchitecture(nodes, [{ id: 'boxed', source: 'source', target: 'target' }],
-    { warn: (message) => warnings.push(message) });
+  const { routes } = routeArchitecture(nodes, [{ id: 'boxed', source: 'source', target: 'target' }], {
+    warn: (message) => warnings.push(message),
+  });
   const route = routes.get('boxed');
   assert.equal(route.length, 2);
   const [start, end] = route;
   const onOutline = ({ x, y, width, height }, point) =>
-    [point.x - x, point.x - x - width, point.y - y, point.y - y - height].some((offset) => offset === 0)
-    && point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height;
+    [point.x - x, point.x - x - width, point.y - y, point.y - y - height].some((offset) => offset === 0) &&
+    point.x >= x &&
+    point.x <= x + width &&
+    point.y >= y &&
+    point.y <= y + height;
   assert.ok(onOutline(nodes.get('source').box, start));
   assert.ok(onOutline(nodes.get('target').box, end));
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /"boxed"/);
   assert.doesNotThrow(() => routeArchitecture(nodes, [{ id: 'quiet', source: 'source', target: 'target' }]));
-  assert.throws(() => routeArchitecture(nodes, [{ id: 'missing', source: 'source', target: 'nowhere' }]),
-    /Missing endpoints for relationship "missing"/);
+  assert.throws(
+    () => routeArchitecture(nodes, [{ id: 'missing', source: 'source', target: 'nowhere' }]),
+    /Missing endpoints for relationship "missing"/,
+  );
 });
 
 test('wraps a rank wider than maxRowWidth into balanced rows that keep their order', () => {
@@ -212,7 +225,10 @@ test('wraps a rank wider than maxRowWidth into balanced rows that keep their ord
   const wrapped = placeArchitecture(nodes, placements, edges, { ...options, maxRowWidth: 1200 });
   assert.ok(wrapped.width <= 1200 + 2 * options.padding, `wrapped width was ${wrapped.width}`);
   const byId = new Map(wrapped.children.map((node) => [node.id, node]));
-  const rows = Map.groupBy(services.map((id) => byId.get(id)), ({ y }) => y);
+  const rows = Map.groupBy(
+    services.map((id) => byId.get(id)),
+    ({ y }) => y,
+  );
   assert.equal(rows.size, 2);
   const sizes = [...rows.values()].map((row) => row.length);
   assert.ok(Math.abs(sizes[0] - sizes[1]) <= 1, `row sizes ${sizes}`);
@@ -228,8 +244,13 @@ test('wraps a rank wider than maxRowWidth into balanced rows that keep their ord
     for (const other of services) {
       if (other === id) continue;
       const box = byId.get(other);
-      assert.ok(node.x + node.width <= box.x || box.x + box.width <= node.x
-        || node.y + node.height <= box.y || box.y + box.height <= node.y, `${id} overlaps ${other}`);
+      assert.ok(
+        node.x + node.width <= box.x ||
+          box.x + box.width <= node.x ||
+          node.y + node.height <= box.y ||
+          box.y + box.height <= node.y,
+        `${id} overlaps ${other}`,
+      );
     }
   }
 });
@@ -252,15 +273,25 @@ test('bundles relationships of one kind from one element and keeps other kinds a
   const box = (x, y) => ({ box: { x, y, width: 120, height: 54 } });
   const nodes = new Map([
     ['hub', box(400, 300)],
-    ['upperLeft', box(0, 0)], ['lowerLeft', box(0, 120)], ['nearLeft', box(200, 120)],
+    ['upperLeft', box(0, 0)],
+    ['lowerLeft', box(0, 120)],
+    ['nearLeft', box(200, 120)],
     ['above', box(400, 120)],
   ]);
   const edge = (target, kind) => ({
-    id: `${kind}-${target}`, source: 'hub', target, targetMarker: true,
+    id: `${kind}-${target}`,
+    source: 'hub',
+    target,
+    targetMarker: true,
     bundling: { type: kind, access: 'unspecified', directed: false },
   });
-  const edges = [edge('upperLeft', 'serving'), edge('lowerLeft', 'serving'), edge('nearLeft', 'serving'),
-    edge('above', 'serving'), edge('nearLeft', 'flow')];
+  const edges = [
+    edge('upperLeft', 'serving'),
+    edge('lowerLeft', 'serving'),
+    edge('nearLeft', 'serving'),
+    edge('above', 'serving'),
+    edge('nearLeft', 'flow'),
+  ];
   const { routes, bundles } = routeArchitecture(nodes, edges);
   const start = (id) => routes.get(id)[0];
   assert.deepEqual(start('serving-upperLeft'), start('serving-lowerLeft'));
@@ -273,8 +304,15 @@ test('bundles relationships of one kind from one element and keeps other kinds a
   assert.equal(left.sharedEnd, 'start');
   assert.equal(bundles.has('flow-nearLeft'), false);
   const [first, second] = [routes.get('serving-upperLeft'), routes.get('serving-lowerLeft')];
-  assert.deepEqual(first.slice(0, 2).map(({ y }) => y), second.slice(0, 2).map(({ y }) => y), 'members share a trunk');
-  const plain = routeArchitecture(nodes, edges.map((edge) => ({ ...edge, bundling: undefined })));
+  assert.deepEqual(
+    first.slice(0, 2).map(({ y }) => y),
+    second.slice(0, 2).map(({ y }) => y),
+    'members share a trunk',
+  );
+  const plain = routeArchitecture(
+    nodes,
+    edges.map((edge) => ({ ...edge, bundling: undefined })),
+  );
   assert.equal(plain.bundles.size, 0, 'relationships without a kind are never bundled');
 });
 
@@ -285,8 +323,9 @@ test('warns when a self-relationship cannot keep clear of other shapes', () => {
     ['right', { box: { x: 234, y: 0, width: 30, height: 300 } }],
   ]);
   const warnings = [];
-  const { routes } = routeArchitecture(nodes, [{ id: 'loop', source: 'a', target: 'a' }],
-    { warn: (message) => warnings.push(message) });
+  const { routes } = routeArchitecture(nodes, [{ id: 'loop', source: 'a', target: 'a' }], {
+    warn: (message) => warnings.push(message),
+  });
   assert.ok(routes.get('loop').length >= 4);
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /"loop"/);

@@ -23,8 +23,10 @@ export interface ReportOutput {
 
 function textReport({ files, diagnostics }: ValidationReport): ReportOutput {
   return {
-    stderr: diagnostics.map(({ file, line, column, severity, message }) =>
-      `${file}:${line}:${column}: ${severity === 'warning' ? 'warning: ' : ''}${message}`),
+    stderr: diagnostics.map(
+      ({ file, line, column, severity, message }) =>
+        `${file}:${line}:${column}: ${severity === 'warning' ? 'warning: ' : ''}${message}`,
+    ),
     stdout: files
       .filter(({ errors }) => errors === 0)
       .map(({ file }) => `${file}: diagram syntax and structure checks passed`),
@@ -34,16 +36,19 @@ function textReport({ files, diagnostics }: ValidationReport): ReportOutput {
 // https://docs.github.com/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
 const escapeData = (text: string): string =>
   text.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
-const escapeProperty = (text: string): string =>
-  escapeData(text).replaceAll(':', '%3A').replaceAll(',', '%2C');
+const escapeProperty = (text: string): string => escapeData(text).replaceAll(':', '%3A').replaceAll(',', '%2C');
 
 function githubReport({ diagnostics }: ValidationReport): ReportOutput {
   return {
     stderr: [],
     stdout: diagnostics.map(({ file, line, column, endLine, endColumn, severity, code, message }) => {
       const properties = [
-        `file=${escapeProperty(file)}`, `line=${line}`, `col=${column}`,
-        `endLine=${endLine}`, `endColumn=${endColumn}`, `title=${escapeProperty(code)}`,
+        `file=${escapeProperty(file)}`,
+        `line=${line}`,
+        `col=${column}`,
+        `endLine=${endLine}`,
+        `endColumn=${endColumn}`,
+        `title=${escapeProperty(code)}`,
       ];
       return `::${severity} ${properties.join(',')}::${escapeData(message)}`;
     }),
@@ -52,8 +57,11 @@ function githubReport({ diagnostics }: ValidationReport): ReportOutput {
 
 export function formatReport(report: ValidationReport, format: OutputFormat): ReportOutput {
   switch (format) {
-    case 'text': return textReport(report);
-    case 'github': return githubReport(report);
-    case 'json': return { stdout: [JSON.stringify(report, null, 2)], stderr: [] };
+    case 'text':
+      return textReport(report);
+    case 'github':
+      return githubReport(report);
+    case 'json':
+      return { stdout: [JSON.stringify(report, null, 2)], stderr: [] };
   }
 }

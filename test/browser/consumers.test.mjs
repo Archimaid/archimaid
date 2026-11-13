@@ -44,32 +44,36 @@ for (const bundler of ['vite', 'webpack', 'rollup']) {
   const installed = existsSync(join(fixture, 'node_modules'));
   const install = `run "npm install --no-package-lock" in test/consumers/${bundler} first`;
   // Locally a missing install is a skip; in CI it means the install step was lost, which must not pass quietly.
-  test(`a ${bundler} build renders a graph-layout diagram`, {
-    skip: !installed && !process.env.CI && install,
-    timeout: 240_000,
-  }, async () => {
-    assert.ok(installed, install);
-    await run('npm', ['run', 'build', '--silent'], { cwd: fixture, maxBuffer: 16 * 1024 * 1024 });
-    const server = await serve(join(fixture, 'dist'));
-    const browser = await chromium.launch();
-    try {
-      const { port } = server.address();
-      const tab = await browser.newPage();
-      const errors = [];
-      tab.on('pageerror', (error) => errors.push(error.message));
-      await tab.goto(`http://127.0.0.1:${port}/`);
-      await tab.waitForFunction(() => document.body.dataset.status !== 'loading', undefined, { timeout: 60_000 });
-      const result = await tab.evaluate(() => ({
-        status: document.body.dataset.status,
-        error: document.body.dataset.error,
-        elements: document.querySelectorAll('#diagram [data-archimate-element]').length,
-        relationships: document.querySelectorAll('#diagram [data-archimate-relationship]').length,
-      }));
-      assert.deepEqual(errors, []);
-      assert.deepEqual(result, { status: 'rendered', error: undefined, elements: 3, relationships: 2 });
-    } finally {
-      await browser.close();
-      server.close();
-    }
-  });
+  test(
+    `a ${bundler} build renders a graph-layout diagram`,
+    {
+      skip: !installed && !process.env.CI && install,
+      timeout: 240_000,
+    },
+    async () => {
+      assert.ok(installed, install);
+      await run('npm', ['run', 'build', '--silent'], { cwd: fixture, maxBuffer: 16 * 1024 * 1024 });
+      const server = await serve(join(fixture, 'dist'));
+      const browser = await chromium.launch();
+      try {
+        const { port } = server.address();
+        const tab = await browser.newPage();
+        const errors = [];
+        tab.on('pageerror', (error) => errors.push(error.message));
+        await tab.goto(`http://127.0.0.1:${port}/`);
+        await tab.waitForFunction(() => document.body.dataset.status !== 'loading', undefined, { timeout: 60_000 });
+        const result = await tab.evaluate(() => ({
+          status: document.body.dataset.status,
+          error: document.body.dataset.error,
+          elements: document.querySelectorAll('#diagram [data-archimate-element]').length,
+          relationships: document.querySelectorAll('#diagram [data-archimate-relationship]').length,
+        }));
+        assert.deepEqual(errors, []);
+        assert.deepEqual(result, { status: 'rendered', error: undefined, elements: 3, relationships: 2 });
+      } finally {
+        await browser.close();
+        server.close();
+      }
+    },
+  );
 }

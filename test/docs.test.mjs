@@ -22,7 +22,11 @@ test('every archimate-beta example in the README and the agent skill is valid', 
     const markdown = await readFile(new URL(`../${document}`, import.meta.url), 'utf8');
     for (const { line, source } of fencedBlocks(markdown).filter(({ source }) => isArchiMateSource(source))) {
       const errors = validateArchiMate(source).diagnostics.filter(({ severity }) => severity === 'error');
-      assert.deepEqual(errors.map(({ message }) => message), [], `${document}:${line}`);
+      assert.deepEqual(
+        errors.map(({ message }) => message),
+        [],
+        `${document}:${line}`,
+      );
       checked++;
     }
   }

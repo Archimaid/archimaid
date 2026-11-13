@@ -127,29 +127,52 @@ const connectorTokens = Object.entries(relationshipConnectors)
   .sort(([left], [right]) => right.length - left.length)
   .map(([glyph, notation], index) => {
     const tokenLabel = '"' + glyph + '"';
-    const token = glyph === 'o--'
-      ? createToken({
-        name: `Connector${index}`,
-        pattern: { exec: matchAggregation },
-        line_breaks: false,
-        start_chars_hint: ['o'],
-        label: tokenLabel,
-        categories: connector,
-      })
-      : createToken({
-        name: `Connector${index}`,
-        pattern: new RegExp(glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')),
-        label: tokenLabel,
-        categories: connector,
-      });
+    const token =
+      glyph === 'o--'
+        ? createToken({
+            name: `Connector${index}`,
+            pattern: { exec: matchAggregation },
+            line_breaks: false,
+            start_chars_hint: ['o'],
+            label: tokenLabel,
+            categories: connector,
+          })
+        : createToken({
+            name: `Connector${index}`,
+            pattern: new RegExp(glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')),
+            label: tokenLabel,
+            categories: connector,
+          });
     connectorNotations.set(token, notation);
     return token;
   });
 
 export const tokens = [
-  space, comment, newline, header, accDescrBlock, metadata, quoted, connector, ...connectorTokens, arrow, colon,
-  direction, layout, element, description, relationship, access, directed, label, note, on, nest,
-  inside, via, identifier,
+  space,
+  comment,
+  newline,
+  header,
+  accDescrBlock,
+  metadata,
+  quoted,
+  connector,
+  ...connectorTokens,
+  arrow,
+  colon,
+  direction,
+  layout,
+  element,
+  description,
+  relationship,
+  access,
+  directed,
+  label,
+  note,
+  on,
+  nest,
+  inside,
+  via,
+  identifier,
 ];
 export const lexer = new Lexer(tokens);
 

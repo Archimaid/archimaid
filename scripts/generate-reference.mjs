@@ -55,7 +55,11 @@ export function referenceMarkdown() {
     row(['Key', 'Name', 'Layer', 'Aspect', 'Description']),
     row(['---', '---', '---', '---', '---']),
     ...elementRows((key, { name, category, aspect, description }) => [
-      code(key), name, layerNames[category], aspect ? aspectNames[aspect] : '—', cell(description),
+      code(key),
+      name,
+      layerNames[category],
+      aspect ? aspectNames[aspect] : '—',
+      cell(description),
     ]),
     '',
     `## Relationship types (${relationshipTypes.length})`,

@@ -61,7 +61,10 @@ export interface ArchiMateValidationResult {
 export class DiagnosticCollector {
   readonly diagnostics: ArchiMateDiagnostic[] = [];
 
-  constructor(private readonly text: string, private readonly lineOffset: number) {}
+  constructor(
+    private readonly text: string,
+    private readonly lineOffset: number,
+  ) {}
 
   get hasErrors(): boolean {
     return this.diagnostics.some(({ severity }) => severity === 'error');

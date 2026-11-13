@@ -1,8 +1,8 @@
-import type { Point } from "../architectureLayout.js";
-import { simplify } from "../geometry.js";
-import { bendCost, heuristicWeight, leadLength } from "./constants.js";
-import type { RouteCost } from "./congestion.js";
-import { firstAtLeast, type Axis, type Bounds, type Port } from "./primitives.js";
+import type { Point } from '../architectureLayout.js';
+import { simplify } from '../geometry.js';
+import { bendCost, heuristicWeight, leadLength } from './constants.js';
+import type { RouteCost } from './congestion.js';
+import { firstAtLeast, type Axis, type Bounds, type Port } from './primitives.js';
 
 interface State {
   column: number;
@@ -58,7 +58,7 @@ interface Grid {
 
 // Search only at ports and obstacle boundaries, where an orthogonal turn can clear a shape.
 function buildGrid(leads: readonly Point[], obstacles: readonly Bounds[], region: Bounds | undefined): Grid {
-  function coordinates(axis: Axis, low: "left" | "top", high: "right" | "bottom"): number[] {
+  function coordinates(axis: Axis, low: 'left' | 'top', high: 'right' | 'bottom'): number[] {
     const values = leads.map((point) => point[axis]);
     for (const box of obstacles) values.push(box[low], box[high]);
     const ordered = [...new Set(values)].sort((a, b) => a - b);
@@ -70,8 +70,8 @@ function buildGrid(leads: readonly Point[], obstacles: readonly Bounds[], region
       .filter((value) => value >= minimum && value <= maximum)
       .sort((a, b) => a - b);
   }
-  const xs = coordinates("x", "left", "right");
-  const ys = coordinates("y", "top", "bottom");
+  const xs = coordinates('x', 'left', 'right');
+  const ys = coordinates('y', 'top', 'bottom');
   const blockers: Record<Axis, Map<number, Uint8Array>> = { x: new Map(), y: new Map() };
   return {
     xs,
@@ -82,12 +82,11 @@ function buildGrid(leads: readonly Point[], obstacles: readonly Bounds[], region
     blockedSteps(axis, across) {
       const cached = blockers[axis].get(across);
       if (cached) return cached;
-      const values = axis === "x" ? xs : ys;
+      const values = axis === 'x' ? xs : ys;
       const steps = new Uint8Array(Math.max(0, values.length - 1));
       for (const box of obstacles) {
-        const [low, high, start, end] = axis === "x"
-          ? [box.left, box.right, box.top, box.bottom]
-          : [box.top, box.bottom, box.left, box.right];
+        const [low, high, start, end] =
+          axis === 'x' ? [box.left, box.right, box.top, box.bottom] : [box.top, box.bottom, box.left, box.right];
         if (!(start < across && across < end)) continue;
         steps.fill(1, Math.max(0, firstAtLeast(values, low, true) - 1), firstAtLeast(values, high));
       }
@@ -106,15 +105,15 @@ export function routeBetween(
 ): Point[] | undefined {
   if (!starts.length || !ends.length) return undefined;
   const { xs, ys, columns, rows, blockedSteps } = buildGrid(
-    [...starts, ...ends].map(({ lead }) => lead), obstacles, region,
+    [...starts, ...ends].map(({ lead }) => lead),
+    obstacles,
+    region,
   );
   const queue: State[] = [];
   const distances = new Map<number, number>();
-  const key = (column: number, row: number, axis: Axis) => (row * xs.length + column) * 2 + Number(axis === "y");
+  const key = (column: number, row: number, axis: Axis) => (row * xs.length + column) * 2 + Number(axis === 'y');
 
-  function enqueue(
-    column: number, row: number, axis: Axis, distance: number, previous?: State, port?: Port,
-  ): void {
+  function enqueue(column: number, row: number, axis: Axis, distance: number, previous?: State, port?: Port): void {
     const x = xs[column];
     const y = ys[row];
     if (x === undefined || y === undefined) return;
@@ -124,8 +123,13 @@ export function routeBetween(
     let remaining = Infinity;
     for (const { lead } of ends) remaining = Math.min(remaining, Math.abs(x - lead.x) + Math.abs(y - lead.y));
     push(queue, {
-      column, row, axis, distance, priority: distance + heuristicWeight * remaining,
-      ...(previous && { previous }), ...(port && { port }),
+      column,
+      row,
+      axis,
+      distance,
+      priority: distance + heuristicWeight * remaining,
+      ...(previous && { previous }),
+      ...(port && { port }),
     });
   }
 
@@ -149,18 +153,23 @@ export function routeBetween(
       if (!best || cost < best.cost) best = { state, port, cost };
     }
     const neighbors = [
-      [state.column - 1, state.row, "x"], [state.column + 1, state.row, "x"],
-      [state.column, state.row - 1, "y"], [state.column, state.row + 1, "y"],
+      [state.column - 1, state.row, 'x'],
+      [state.column + 1, state.row, 'x'],
+      [state.column, state.row - 1, 'y'],
+      [state.column, state.row + 1, 'y'],
     ] as const;
     for (const [column, row, axis] of neighbors) {
       const nextX = xs[column];
       const nextY = ys[row];
       if (nextX === undefined || nextY === undefined) continue;
       const next = { x: nextX, y: nextY };
-      const step = axis === "x" ? Math.min(column, state.column) : Math.min(row, state.row);
-      if (blockedSteps(axis, axis === "x" ? y : x)[step]) continue;
-      const distance = state.distance + Math.abs(point[axis] - next[axis])
-        + (axis === state.axis ? 0 : bendCost) + routeCost(axis, point, next);
+      const step = axis === 'x' ? Math.min(column, state.column) : Math.min(row, state.row);
+      if (blockedSteps(axis, axis === 'x' ? y : x)[step]) continue;
+      const distance =
+        state.distance +
+        Math.abs(point[axis] - next[axis]) +
+        (axis === state.axis ? 0 : bendCost) +
+        routeCost(axis, point, next);
       enqueue(column, row, axis, distance, state);
     }
   }
@@ -170,7 +179,7 @@ export function routeBetween(
   for (let current: State | undefined = best.state; current; current = current.previous) {
     const x = xs[current.column];
     const y = ys[current.row];
-    if (x === undefined || y === undefined) throw new Error("Invalid orthogonal routing point.");
+    if (x === undefined || y === undefined) throw new Error('Invalid orthogonal routing point.');
     points.push({ x, y });
     if (current.port) points.push(current.port.anchor);
   }
