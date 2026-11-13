@@ -3,7 +3,7 @@
 [![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](package.json)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Node.js 22.12 or later](https://img.shields.io/badge/Node.js-%E2%89%A522.12-339933)](https://nodejs.org/)
-[![Mermaid 12.3.0](https://img.shields.io/badge/Mermaid-12.3.0-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
+[![Mermaid 12.3 or later](https://img.shields.io/badge/Mermaid-%E2%89%A512.3-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
 [![ArchiMate 3.2](https://img.shields.io/badge/ArchiMate-3.2-6d44ae)](https://publications.opengroup.org/standards/archimate/c226)
 
 Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, relationship-backed nesting, and notes. The `archimate-beta` syntax is experimental.
@@ -16,22 +16,24 @@ Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and 
 
 ## Quick start
 
-Use Node.js 22.12 or later. From a checkout, install dependencies and validate a bundled example.
+Use Node.js 22.12 or later and Mermaid 12.3 or a later 12.x release. The package is not on npm yet; until it is, install it from a local archive as described under [Development](#development).
 
 ```sh
-npm ci
-npm run build
-node dist/cli.js validate examples/order-fulfilment.mmd
+npm install archimate-mermaid mermaid
+npx archimate validate docs/
 ```
 
-The validator prints every problem it finds as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `-` as the input path to read from standard input.
+`archimate validate` accepts files, directories and `-` for standard input. It checks `.mmd` files and the `archimate-beta` diagrams in fenced `mermaid` code blocks of Markdown files, and reports Markdown line numbers. In a directory it skips Mermaid files of other diagram types. It prints every problem as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `--format json` for machine-readable output, or `--format github` for annotations in a GitHub Actions log.
 
-To render a standalone SVG, install Playwright's Chromium browser and run the checkout's render command.
+To render a standalone SVG, install Playwright and its Chromium browser.
 
 ```sh
+npm install --save-dev playwright
 npx playwright install chromium
-npm run render -- examples/order-fulfilment.mmd order-fulfilment.svg
+npx archimate render diagram.mmd diagram.svg
 ```
+
+`archimate render` accepts `--theme default|base|dark|forest|neutral` and `--background theme|transparent`. Run `npx archimate --help` for all options.
 
 ## Examples
 
@@ -115,18 +117,11 @@ Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to a
 
 ## Host integration
 
-Build a local package archive with `npm pack` in the plugin checkout. In your host project, install that archive with Mermaid 12.3.0.
-
-```sh
-npm install mermaid@12.3.0 /path/to/archimate-for-mermaid-0.1.0.tgz
-npm exec -- archimate validate diagram.mmd
-```
-
 Add a `<div id="diagram"></div>` to your page and run this module through your JavaScript bundler.
 
 ```js
 import mermaid from 'mermaid';
-import { archimate } from 'archimate-for-mermaid';
+import { archimate } from 'archimate-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 await mermaid.registerExternalDiagrams([archimate]);
@@ -140,6 +135,27 @@ const source = `archimate-beta
 const { svg } = await mermaid.render('order-fulfilment', source);
 document.querySelector('#diagram').innerHTML = svg;
 ```
+
+Without a bundler, load Mermaid's and this package's prebuilt ES modules, for example from a CDN.
+
+```html
+<pre class="mermaid">
+archimate-beta
+  element businessRole clerk "Fulfilment clerk"
+  element businessProcess fulfil "Fulfil order"
+  clerk @==> fulfil
+</pre>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
+  import { archimate } from 'https://cdn.jsdelivr.net/npm/archimate-mermaid@0/dist/bundle/archimate-mermaid.esm.min.mjs';
+
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+  await mermaid.registerExternalDiagrams([archimate]);
+  await mermaid.run();
+</script>
+```
+
+The bundle is also exported as `archimate-mermaid/bundle`. It includes the parser and renderer, and loads ELK from a separate file only when a `layout graph` diagram is rendered.
 
 Live rendering requires a host that registers the external diagram. For GitHub Markdown, commit the `.mmd` source alongside its exported SVG and link to the SVG with `![Diagram title](order-fulfilment.svg)`. This keeps the model reviewable in Git and the image visible to readers. [Mermaid external diagram API](https://mermaid.js.org/config/setup/mermaid/interfaces/Mermaid.html#registerexternaldiagrams)
 
@@ -166,7 +182,7 @@ The `archimate` export uses the Modern palette and 24 pixels of outer diagram pa
 
 ```js
 import mermaid from 'mermaid';
-import { createArchiMatePlugin } from 'archimate-for-mermaid';
+import { createArchiMatePlugin } from 'archimate-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
 await mermaid.registerExternalDiagrams([
@@ -188,7 +204,7 @@ Use the language entry point to validate or inspect a diagram in Node.js without
 
 ```js
 import { readFile } from 'node:fs/promises';
-import { parseArchiMate } from 'archimate-for-mermaid/language';
+import { parseArchiMate } from 'archimate-mermaid/language';
 
 const source = await readFile('diagram.mmd', 'utf8');
 const model = parseArchiMate(source);
@@ -199,11 +215,11 @@ Validation errors throw `ArchiMateError` with a code, line, and column. `parseAr
 
 For editors and linters, `validateArchiMate(source, options)` returns `{ model, diagnostics }`. It reports every semantic error, and warnings such as `DUPLICATE_RELATIONSHIP`, each with `code`, `severity`, `message`, `line`, `column`, `endLine` and `endColumn`. Lines and columns are 1-based and `endColumn` is exclusive. `model` is present only when there are no errors.
 
-The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue.
+The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue. [Type reference](docs/reference.md)
 
 ## Coverage
 
-The renderer supports the default figures for all 60 concrete elements and all 11 relationship types in the bundled catalogue. Access accepts `access read`, `access write`, `access readWrite`, or `access unspecified`. Use `directed` for a directed Association. [Notation preview](examples/element-preview.svg)
+The renderer supports the default figures for all 60 concrete elements and all 11 relationship types in the bundled catalogue. The [type reference](docs/reference.md) lists every element and relationship key with its name, layer and shorthand connector. Access accepts `access read`, `access write`, `access readWrite`, or `access unspecified`. Use `directed` for a directed Association. [Notation preview](examples/element-preview.svg)
 
 The validator checks syntax, declared endpoints, supported element and relationship types, relationship options, and nesting. Check the specification to verify which element types a relationship can connect. [ArchiMate 3.2 specification, Appendix B](https://publications.opengroup.org/standards/archimate/c226)
 
@@ -219,7 +235,13 @@ npm run test:browser
 npm pack --dry-run
 ```
 
-Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. The browser tests exercise the plugin through a real Mermaid host.
+To try an unpublished version in another project, build an archive with `npm pack` in the checkout and install it there.
+
+```sh
+npm install mermaid /path/to/archimate-mermaid-0.1.0.tgz
+```
+
+Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
 For contributions, check the design notes, update tests for language or rendering changes, and include a minimal diagram when reporting a problem. To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
 

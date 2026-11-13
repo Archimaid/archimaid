@@ -1,9 +1,18 @@
 {
-  "name": "archimate-for-mermaid",
+  "name": "archimate-mermaid",
   "version": "0.1.0",
   "description": "An external Mermaid diagram type for ArchiMate 3.2",
   "keywords": ["archimate", "mermaid", "enterprise-architecture", "diagrams-as-code"],
   "license": "MIT",
+  "author": "Berny (https://github.com/Berny-art)",
+  "homepage": "https://github.com/Berny-art/Archimate-for-Mermaid#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Berny-art/Archimate-for-Mermaid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Berny-art/Archimate-for-Mermaid/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -13,7 +22,9 @@
     "examples/*.mmd",
     "examples/*.svg",
     "skills/archimate-mermaid/SKILL.md",
-    "FOUNDATION.md"
+    "docs/reference.md",
+    "FOUNDATION.md",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
@@ -23,22 +34,33 @@
     "./language": {
       "types": "./dist/language.d.ts",
       "import": "./dist/language.js"
+    },
+    "./bundle": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/bundle/archimate-mermaid.esm.min.mjs"
     }
   },
   "bin": {
     "archimate": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-bundle.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "test:browser": "npm run build && node --test test/browser/*.test.mjs",
-    "render": "npm run build --silent && node scripts/render.mjs",
+    "render": "npm run build --silent && node dist/cli.js render",
     "render:preview": "npm run build --silent && node scripts/render-element-preview.mjs",
+    "reference": "npm run build --silent && node scripts/generate-reference.mjs",
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "mermaid": "12.3.0"
+    "mermaid": "^12.3.0",
+    "playwright": "^1.56.1"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
   },
   "dependencies": {
     "chevrotain": "13.2.0",
