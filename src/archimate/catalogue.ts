@@ -22,25 +22,11 @@ export interface ElementTypeDefinition {
   readonly description: string;
   readonly category: ElementCategory;
   readonly aspect: ElementAspect | null;
-  readonly fill: string;
   readonly notation?: {
     readonly outline: ElementOutline;
     readonly icon?: readonly IconPath[];
   };
 }
-
-// Archi's "ArchiMate Standard - 3.2" preferences. These colours have no model semantics.
-// https://www.archimatetool.com/downloads/colour-schemes/ArchiMate%20Standard%20-%203.2.prefs
-const fills = {
-  motivation: "#ccccff",
-  strategy: "#f5deaa",
-  business: "#ffffb5",
-  application: "#b5ffff",
-  technology: "#c9e7b7",
-  physical: "#c9e7b7",
-  implementationAndMigration: "#ffe0e0",
-  composite: "#ffffff",
-} satisfies Record<ElementCategory, string>;
 
 export const relationshipStroke = "#000000";
 
@@ -121,9 +107,8 @@ function element(
   aspect: ElementAspect | null,
   outline: ElementOutline,
   icon: keyof typeof icons,
-  fill = fills[category],
 ): ElementTypeDefinition {
-  return { name, description, category, aspect, fill, notation: { outline, icon: icons[icon] } };
+  return { name, description, category, aspect, notation: { outline, icon: icons[icon] } };
 }
 
 export const elementTypes = {
@@ -186,7 +171,7 @@ export const elementTypes = {
   plateau: element("Plateau", "A relatively stable architecture state within a period of time.", "implementationAndMigration", null, "rectangle", "plateau"),
   gap: element("Gap", "A difference between two architecture plateaus.", "implementationAndMigration", null, "rectangle", "gap"),
   grouping: element("Grouping", "A collection of concepts that share a common characteristic.", "composite", null, "grouping", "grouping"),
-  location: element("Location", "A physical or conceptual place where concepts are situated or behaviour occurs.", "composite", null, "rectangle", "location", "#edcfe2"),
+  location: element("Location", "A physical or conceptual place where concepts are situated or behaviour occurs.", "composite", null, "rectangle", "location"),
 } as const satisfies Record<string, ElementTypeDefinition>;
 
 export type ElementType = keyof typeof elementTypes;
