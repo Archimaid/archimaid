@@ -30,24 +30,38 @@ The Mermaid adapter owns registration, the parser/DB contract and SVG host integ
 
 The Use Case renderer projects its model into layout data and calls Mermaid's shared rendering utilities from inside the repository. Prototype that same division of responsibilities through the public registration API. Test an ELK layout with ArchiMate markers and compound groups, and verify which published interfaces can support it. If the required utilities are internal, call the layout engine through the plugin's renderer. [Use Case renderer](https://github.com/mermaid-js/mermaid/blob/develop/packages/mermaid/src/diagrams/usecase/usecaseRenderer.ts) · [Mermaid layout documentation](https://mermaid.js.org/intro/syntax-reference.html#layout-and-look)
 
-## Proposed repository layout
+## Repository layout
 
 ```text
 src/
+  language.ts           # Public parse and validate API, usable without a browser
+  cli.ts                # archimate validate
   archimate/
-    catalogue/          # 3.2 element and relationship types, notation and palette
-    model.ts            # Elements, relationships, connectors and diagram options
-    parser/             # Grammar and source locations
-    validate.ts         # Model validation and diagnostics
+    catalogue.ts        # 3.2 element and relationship types and notation
+    model.ts            # Elements, relationships, notes and diagram options
+    lexer.ts            # Tokens, including shorthand connectors
+    grammar.ts          # Chevrotain grammar
+    frontmatter.ts      # Leading YAML block and byte order mark
+    parser.ts           # parseArchiMate, the throwing entry point
+    validate.ts         # Model construction, semantic checks and validateArchiMate
+    nesting.ts          # Nesting rules
+    diagnostics.ts      # Diagnostic codes, severities and ranges
+    suggestions.ts      # "Did you mean" hints
   mermaid/
     archimateDetector.ts
     archimateDiagram.ts # Parser, DB, renderer and styles registration
-    archimateDb.ts
-    archimateRenderer.ts
+    archimateRenderer.ts # Pipeline over the render phases
+    render/             # measure, graph, layout, place, route, labels, viewport, draw
+    architectureLayout.ts
+    relationshipPlacement.ts
+    orthogonalRouter.ts # Orthogonal routing for architecture and framework layout
+    routing/            # Anchors, bundle planning, congestion and path search
     styles.ts
 examples/               # Authoring examples and visual fixtures
-test/                   # Validation and Mermaid integration tests
+test/                   # Language, CLI, layout and browser tests
 ```
+
+The diagram database is defined inline in `archimateDiagram.ts`; there is no separate `archimateDb.ts`.
 
 Start with one TypeScript package. Keep module boundaries clear enough that the diagram can later fit under Mermaid's own `diagrams/archimate/` directory. Choose a separate CLI package only if its dependencies or distribution needs warrant it.
 
