@@ -106,3 +106,7 @@ CI should validate the text and render SVG with pinned versions and fonts. The s
 4. Expand the catalogue and validation coverage and document the supported subset for a public beta. Add the CLI publishing path, executable documentation examples and realistic visual fixtures.
 
 For possible upstream inclusion, bring the working package and examples to the [existing ArchiMate discussion](https://github.com/orgs/mermaid-js/discussions/4007). Agree on syntax, scope, theme defaults and the renderer integration before preparing a contribution. Mermaid's in-tree checklist covers registration, schema changes for configuration, documentation, examples, demos, tests and a changeset. The palette and layout approach are the two integration decisions to settle early. [Mermaid contribution guide](https://mermaid.js.org/community/new-diagram.html)
+
+## Trademark
+
+Archimaid is an independent project and is not affiliated with or endorsed by The Open Group. ArchiMate is a registered trademark of The Open Group in the United States and other countries.
