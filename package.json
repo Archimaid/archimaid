@@ -13,6 +13,7 @@
     "examples/*.mmd",
     "examples/*.svg",
     "skills/archimate-mermaid/SKILL.md",
+    "docs/reference.md",
     "FOUNDATION.md"
   ],
   "exports": {
@@ -35,6 +36,7 @@
     "test:browser": "npm run build && node --test test/browser/*.test.mjs",
     "render": "npm run build --silent && node scripts/render.mjs",
     "render:preview": "npm run build --silent && node scripts/render-element-preview.mjs",
+    "reference": "npm run build --silent && node scripts/generate-reference.mjs",
     "prepack": "npm run build"
   },
   "peerDependencies": {

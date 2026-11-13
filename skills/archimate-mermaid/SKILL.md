@@ -29,6 +29,75 @@ archimate-beta
 - Architecture and framework layouts preserve nesting. A parent with its own layer determines its container's placement. Groups without their own layer that contain elements from multiple layers are placed separately.
 - Use `layout graph` for relationship-driven placement. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL` and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
 
+## Element types
+
+Use these keys after `element`. Descriptions and relationship connectors are in the [type reference](../../docs/reference.md).
+
+<!-- element-types:start -->
+| Key | Name | Layer |
+| --- | --- | --- |
+| `stakeholder` | Stakeholder | Motivation |
+| `driver` | Driver | Motivation |
+| `assessment` | Assessment | Motivation |
+| `goal` | Goal | Motivation |
+| `outcome` | Outcome | Motivation |
+| `principle` | Principle | Motivation |
+| `requirement` | Requirement | Motivation |
+| `constraint` | Constraint | Motivation |
+| `meaning` | Meaning | Motivation |
+| `value` | Value | Motivation |
+| `resource` | Resource | Strategy |
+| `capability` | Capability | Strategy |
+| `valueStream` | Value Stream | Strategy |
+| `courseOfAction` | Course of Action | Strategy |
+| `businessActor` | Business Actor | Business |
+| `businessRole` | Business Role | Business |
+| `businessCollaboration` | Business Collaboration | Business |
+| `businessInterface` | Business Interface | Business |
+| `businessProcess` | Business Process | Business |
+| `businessFunction` | Business Function | Business |
+| `businessInteraction` | Business Interaction | Business |
+| `businessEvent` | Business Event | Business |
+| `businessService` | Business Service | Business |
+| `businessObject` | Business Object | Business |
+| `contract` | Contract | Business |
+| `representation` | Representation | Business |
+| `product` | Product | Business |
+| `applicationComponent` | Application Component | Application |
+| `applicationCollaboration` | Application Collaboration | Application |
+| `applicationInterface` | Application Interface | Application |
+| `applicationFunction` | Application Function | Application |
+| `applicationInteraction` | Application Interaction | Application |
+| `applicationProcess` | Application Process | Application |
+| `applicationEvent` | Application Event | Application |
+| `applicationService` | Application Service | Application |
+| `dataObject` | Data Object | Application |
+| `node` | Node | Technology |
+| `device` | Device | Technology |
+| `systemSoftware` | System Software | Technology |
+| `technologyCollaboration` | Technology Collaboration | Technology |
+| `technologyInterface` | Technology Interface | Technology |
+| `path` | Path | Technology |
+| `communicationNetwork` | Communication Network | Technology |
+| `technologyFunction` | Technology Function | Technology |
+| `technologyProcess` | Technology Process | Technology |
+| `technologyInteraction` | Technology Interaction | Technology |
+| `technologyEvent` | Technology Event | Technology |
+| `technologyService` | Technology Service | Technology |
+| `artifact` | Artifact | Technology |
+| `equipment` | Equipment | Physical |
+| `facility` | Facility | Physical |
+| `distributionNetwork` | Distribution Network | Physical |
+| `material` | Material | Physical |
+| `workPackage` | Work Package | Implementation & Migration |
+| `deliverable` | Deliverable | Implementation & Migration |
+| `implementationEvent` | Implementation Event | Implementation & Migration |
+| `plateau` | Plateau | Implementation & Migration |
+| `gap` | Gap | Implementation & Migration |
+| `grouping` | Grouping | Composite |
+| `location` | Location | Composite |
+<!-- element-types:end -->
+
 ## Model relationships and annotations
 
 - Use `relationship <type> <id> <source> -> <target>`. The arrow in the source declares model direction. For Access, put the accessor first and choose `access read`, `access write`, `access readWrite`, or `access unspecified` after the target. Use `directed` after the target to draw a directed Association. Add `label "Text"` last.

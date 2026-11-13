@@ -199,11 +199,11 @@ Validation errors throw `ArchiMateError` with a code, line, and column. `parseAr
 
 For editors and linters, `validateArchiMate(source, options)` returns `{ model, diagnostics }`. It reports every semantic error, and warnings such as `DUPLICATE_RELATIONSHIP`, each with `code`, `severity`, `message`, `line`, `column`, `endLine` and `endColumn`. Lines and columns are 1-based and `endColumn` is exclusive. `model` is present only when there are no errors.
 
-The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue.
+The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue. [Type reference](docs/reference.md)
 
 ## Coverage
 
-The renderer supports the default figures for all 60 concrete elements and all 11 relationship types in the bundled catalogue. Access accepts `access read`, `access write`, `access readWrite`, or `access unspecified`. Use `directed` for a directed Association. [Notation preview](examples/element-preview.svg)
+The renderer supports the default figures for all 60 concrete elements and all 11 relationship types in the bundled catalogue. The [type reference](docs/reference.md) lists every element and relationship key with its name, layer and shorthand connector. Access accepts `access read`, `access write`, `access readWrite`, or `access unspecified`. Use `directed` for a directed Association. [Notation preview](examples/element-preview.svg)
 
 The validator checks syntax, declared endpoints, supported element and relationship types, relationship options, and nesting. Check the specification to verify which element types a relationship can connect. [ArchiMate 3.2 specification, Appendix B](https://publications.opengroup.org/standards/archimate/c226)
 
@@ -219,7 +219,7 @@ npm run test:browser
 npm pack --dry-run
 ```
 
-Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. The browser tests exercise the plugin through a real Mermaid host.
+Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
 For contributions, check the design notes, update tests for language or rendering changes, and include a minimal diagram when reporting a problem. To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
 
