@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve ArchiMate for Mermaid. This guide covers setup, checks, and the conventions a change should follow. Read [FOUNDATION.md](FOUNDATION.md) for the design and [README.md](README.md) for the language.
+Thanks for helping improve ArchiMermaid. This guide covers setup, checks, and the conventions a change should follow. Read [FOUNDATION.md](FOUNDATION.md) for the design and [README.md](README.md) for the language.
 
 ## Setup
 
@@ -28,7 +28,7 @@ Run `npm run format` to apply Prettier. The bundler consumer tests skip locally 
 
 - Keep a pull request to one concern, and a commit to one logical step.
 - Add or update a test with every behaviour change. Language changes go in `test/language.test.mjs`, CLI changes in `test/cli.test.mjs`, and rendering changes in `test/browser/`. Browser tests share their helpers in `test/browser/helpers.mjs`.
-- When a change affects the syntax, update `README.md`, `skills/archimate-mermaid/SKILL.md` and the examples in the same pull request. A test parses every `archimate-beta` example in the README and the skill.
+- When a change affects the syntax, update `README.md`, `skills/archi-mermaid/SKILL.md` and the examples in the same pull request. A test parses every `archimate-beta` example in the README and the skill.
 - Do not suppress type errors or delete failing tests.
 - Write commit subjects in the imperative mood, for example "Wrap long relationship labels", and explain why in the body when it is not obvious.
 

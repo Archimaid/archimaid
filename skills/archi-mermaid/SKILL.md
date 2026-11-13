@@ -1,11 +1,11 @@
 ---
-name: archimate-mermaid
-description: Author, validate, and render ArchiMate 3.2 diagrams in the archimate-beta syntax for the archimate-mermaid plugin. Use for .mmd diagrams with typed elements, relationships, nesting, and notes.
+name: archi-mermaid
+description: Author, validate, and render ArchiMate 3.2 diagrams in the archimate-beta syntax for the archi-mermaid plugin. Use for .mmd diagrams with typed elements, relationships, nesting, and notes.
 ---
 
-# ArchiMate for Mermaid
+# ArchiMermaid
 
-Start the source with `archimate-beta`. Put one declaration on each line. Use the exact type keys exported by `archimate-mermaid/language` in `elementTypes` and `relationshipTypes`. Give elements, relationships, and notes unique IDs. IDs start with a letter or underscore and can contain letters, digits, underscores, and hyphens. Quote display names, descriptions, labels, and note text with JSON-compatible double quotes. Names, labels, and note text must not be empty. Use `\n` for a line break. Long names and labels wrap automatically. Use `accDescr { … }` for a multi-line accessible description. A leading YAML frontmatter block between `---` lines is allowed.
+Start the source with `archimate-beta`. Put one declaration on each line. Use the exact type keys exported by `archi-mermaid/language` in `elementTypes` and `relationshipTypes`. Give elements, relationships, and notes unique IDs. IDs start with a letter or underscore and can contain letters, digits, underscores, and hyphens. Quote display names, descriptions, labels, and note text with JSON-compatible double quotes. Names, labels, and note text must not be empty. Use `\n` for a line break. Long names and labels wrap automatically. Use `accDescr { … }` for a multi-line accessible description. A leading YAML frontmatter block between `---` lines is allowed.
 
 ```text
 archimate-beta
@@ -111,11 +111,11 @@ Use these keys after `element`. Descriptions and relationship connectors are in 
 
 ## Check and render
 
-From the repository root, use Node.js 22.12 or later. If the checkout needs setup, run `npm ci` and `npm run build`. Validate with `node dist/cli.js validate diagram.mmd` or, with the package installed, `archimate validate diagram.mmd`. Pass `-` as the input file to validate stdin. The validator prints every problem as `file:line:column: message` and prefixes warnings with `warning:`. It exits with status 1 if there is any error and 0 if there are only warnings. Fix reported errors against the model, then validate again. Programmatic callers can use `parseArchiMate(source)` from `archimate-mermaid/language`, or `validateArchiMate(source)` to get every error and warning at once.
+From the repository root, use Node.js 22.12 or later. If the checkout needs setup, run `npm ci` and `npm run build`. Validate with `node dist/cli.js validate diagram.mmd` or, with the package installed, `archi-mermaid validate diagram.mmd`. Pass `-` as the input file to validate stdin. The validator prints every problem as `file:line:column: message` and prefixes warnings with `warning:`. It exits with status 1 if there is any error and 0 if there are only warnings. Fix reported errors against the model, then validate again. Programmatic callers can use `parseArchiMate(source)` from `archi-mermaid/language`, or `validateArchiMate(source)` to get every error and warning at once.
 
 Validation covers syntax, declared endpoints, supported element and relationship types, relationship options, and nesting. Verify that ArchiMate 3.2 permits each relationship between its source and target element types. Automatic checks against Appendix B are under development. See the [release status in the README](../../README.md).
 
-For SVG rendering from the checkout, install Playwright Chromium with `npx playwright install chromium` if needed, then run `npm run render -- diagram.mmd diagram.svg`. Inspect layout and labels before sharing the SVG. For browser integration, use the Mermaid peer version in `package.json` and call `await mermaid.registerExternalDiagrams([archimate])` with `archimate` imported from `archimate-mermaid` before rendering. Use the exported SVG in Markdown hosts without custom diagram registration.
+For SVG rendering from the checkout, install Playwright Chromium with `npx playwright install chromium` if needed, then run `npm run render -- diagram.mmd diagram.svg`. Inspect layout and labels before sharing the SVG. For browser integration, use the Mermaid peer version in `package.json` and call `await mermaid.registerExternalDiagrams([archimate])` with `archimate` imported from `archi-mermaid` before rendering. Use the exported SVG in Markdown hosts without custom diagram registration.
 
 - [Order management](../../examples/order-management.mmd) models assignment, realization, serving, and read access.
 - Cross-layer relationships shows architecture layout and nested claims processing. [Source](../../examples/cross-layer-relationships.mmd) · [SVG](../../examples/cross-layer-relationships.svg)

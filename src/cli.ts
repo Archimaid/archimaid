@@ -16,10 +16,10 @@ import { validateArchiMate } from './language.js';
 import type { ArchiMateBackground } from './index.js';
 
 const usage = `Usage:
-  archimate validate [--format text|json|github] <file|directory|->...
-  archimate render [--theme default|base|dark|forest|neutral] [--background theme|transparent] <input.mmd|-> <output.svg>
-  archimate --version
-  archimate --help
+  archi-mermaid validate [--format text|json|github] <file|directory|->...
+  archi-mermaid render [--theme default|base|dark|forest|neutral] [--background theme|transparent] <input.mmd|-> <output.svg>
+  archi-mermaid --version
+  archi-mermaid --help
 
 validate checks .mmd files, and archimate-beta blocks in fenced mermaid code blocks of Markdown files.
 Directories are searched recursively for .mmd, .mermaid, .md and .markdown files.`;

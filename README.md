@@ -1,4 +1,4 @@
-# ArchiMate for Mermaid
+# ArchiMermaid
 
 [![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](package.json)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -6,7 +6,7 @@
 [![Mermaid 12.3 or later](https://img.shields.io/badge/Mermaid-%E2%89%A512.3-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
 [![ArchiMate 3.2](https://img.shields.io/badge/ArchiMate-3.2-6d44ae)](https://publications.opengroup.org/standards/archimate/c226)
 
-Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, nesting, notes, and element links. The `archimate-beta` syntax is experimental.
+ArchiMermaid lets you write ArchiMate® 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, nesting, notes, and element links. The `archimate-beta` syntax is experimental.
 
 **Automatic relationship checks against ArchiMate 3.2 Appendix B are under development.** Their release depends on permission from The Open Group to distribute the relationship lookup.
 
@@ -19,21 +19,21 @@ Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and 
 Use Node.js 22.12 or later and Mermaid 12.3 or a later 12.x release. The package is not on npm yet; until it is, install it from a local archive as described under [Development](#development).
 
 ```sh
-npm install archimate-mermaid mermaid
-npx archimate validate docs/
+npm install archi-mermaid mermaid
+npx archi-mermaid validate docs/
 ```
 
-`archimate validate` accepts files, directories and `-` for standard input. It checks `.mmd` files and the `archimate-beta` diagrams in fenced `mermaid` code blocks of Markdown files, and reports Markdown line numbers. In a directory it skips Mermaid files of other diagram types. It prints every problem as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `--format json` for machine-readable output, or `--format github` for annotations in a GitHub Actions log.
+`archi-mermaid validate` accepts files, directories and `-` for standard input. It checks `.mmd` files and the `archimate-beta` diagrams in fenced `mermaid` code blocks of Markdown files, and reports Markdown line numbers. In a directory it skips Mermaid files of other diagram types. It prints every problem as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `--format json` for machine-readable output, or `--format github` for annotations in a GitHub Actions log.
 
 To render a standalone SVG, install Playwright and its Chromium browser.
 
 ```sh
 npm install --save-dev playwright
 npx playwright install chromium
-npx archimate render diagram.mmd diagram.svg
+npx archi-mermaid render diagram.mmd diagram.svg
 ```
 
-`archimate render` accepts `--theme default|base|dark|forest|neutral` and `--background theme|transparent`. Run `npx archimate --help` for all options.
+`archi-mermaid render` accepts `--theme default|base|dark|forest|neutral` and `--background theme|transparent`. Run `npx archi-mermaid --help` for all options.
 
 ## Examples
 
@@ -136,7 +136,7 @@ Add a `<div id="diagram"></div>` to your page and run this module through your J
 
 ```js
 import mermaid from 'mermaid';
-import { archimate } from 'archimate-mermaid';
+import { archimate } from 'archi-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 await mermaid.registerExternalDiagrams([archimate]);
@@ -162,7 +162,7 @@ archimate-beta
 </pre>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
-  import { archimate } from 'https://cdn.jsdelivr.net/npm/archimate-mermaid@0/dist/bundle/archimate-mermaid.esm.min.mjs';
+  import { archimate } from 'https://cdn.jsdelivr.net/npm/archi-mermaid@0/dist/bundle/archi-mermaid.esm.min.mjs';
 
   mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
   await mermaid.registerExternalDiagrams([archimate]);
@@ -170,7 +170,7 @@ archimate-beta
 </script>
 ```
 
-The bundle is also exported as `archimate-mermaid/bundle`. It includes the parser and renderer, and loads ELK from a separate file only when a `layout graph` diagram is rendered.
+The bundle is also exported as `archi-mermaid/bundle`. It includes the parser and renderer, and loads ELK from a separate file only when a `layout graph` diagram is rendered.
 
 Live rendering requires a host that registers the external diagram. For GitHub Markdown, commit the `.mmd` source alongside its exported SVG and link to the SVG with `![Diagram title](order-fulfilment.svg)`. This keeps the model reviewable in Git and the image visible to readers. [Mermaid external diagram API](https://mermaid.js.org/config/setup/mermaid/interfaces/Mermaid.html#registerexternaldiagrams)
 
@@ -197,7 +197,7 @@ The `archimate` export uses the Modern palette and 24 pixels of outer diagram pa
 
 ```js
 import mermaid from 'mermaid';
-import { createArchiMatePlugin } from 'archimate-mermaid';
+import { createArchiMatePlugin } from 'archi-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
 await mermaid.registerExternalDiagrams([
@@ -219,7 +219,7 @@ Use the language entry point to validate or inspect a diagram in Node.js without
 
 ```js
 import { readFile } from 'node:fs/promises';
-import { parseArchiMate } from 'archimate-mermaid/language';
+import { parseArchiMate } from 'archi-mermaid/language';
 
 const source = await readFile('diagram.mmd', 'utf8');
 const model = parseArchiMate(source);
@@ -254,12 +254,12 @@ npm pack --dry-run
 To try an unpublished version in another project, build an archive with `npm pack` in the checkout and install it there.
 
 ```sh
-npm install mermaid /path/to/archimate-mermaid-0.1.0.tgz
+npm install mermaid /path/to/archi-mermaid-0.1.0.tgz
 ```
 
 Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an element type. Report security issues as described in [SECURITY.md](SECURITY.md). To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an element type. Report security issues as described in [SECURITY.md](SECURITY.md). To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archi-mermaid/SKILL.md)
 
 ## Sources
 
@@ -267,4 +267,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an
 - The Open Group's reference cards illustrate element figures and relationship notation. [Reference cards N221](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf)
 - Mermaid provides the external diagram API, and ELK provides the graph layout. [Mermaid diagram guide](https://mermaid.js.org/community/new-diagram.html) · [ELK](https://eclipse.dev/elk/)
 
-The plugin code is licensed under the [MIT License](LICENSE). The ArchiMate specification has [separate licensing terms](https://www.opengroup.co.za/standards). ArchiMate® is a registered trademark of The Open Group.
+The plugin code is licensed under the [MIT License](LICENSE). The ArchiMate specification has [separate licensing terms](https://www.opengroup.co.za/standards). ArchiMate® is a registered trademark of The Open Group. ArchiMermaid is an independent project and is not affiliated with or endorsed by The Open Group.
