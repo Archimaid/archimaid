@@ -14,13 +14,13 @@
   ],
   "license": "MIT",
   "author": "Berny (https://github.com/Berny-art)",
-  "homepage": "https://github.com/Berny-art/archimaid#readme",
+  "homepage": "https://archimaid.org",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Berny-art/archimaid.git"
+    "url": "git+https://github.com/Archimaid/archimaid.git"
   },
   "bugs": {
-    "url": "https://github.com/Berny-art/archimaid/issues"
+    "url": "https://github.com/Archimaid/archimaid/issues"
   },
   "type": "module",
   "engines": {
