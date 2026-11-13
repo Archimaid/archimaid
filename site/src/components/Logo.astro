@@ -1,0 +1,30 @@
+---
+interface Props {
+  size?: number;
+}
+
+const { size = 34 } = Astro.props;
+// Thicken the outline as the mark shrinks, so it keeps roughly a 1.5 to 2 px line on screen.
+const strokeWidth = Math.min(12, Math.max(4, 200 / size));
+const bars = [
+  { x: 34, y: 14, layer: 'business' },
+  { x: 23, y: 47, layer: 'application' },
+  { x: 12, y: 80, layer: 'technology' },
+];
+---
+
+<svg width={size} height={size} viewBox="0 0 120 120" aria-hidden="true">
+  {
+    bars.map((bar) => (
+      <rect
+        x={bar.x}
+        y={bar.y}
+        width="74"
+        height="26"
+        rx="9"
+        stroke-width={strokeWidth}
+        style={`fill: var(--${bar.layer}); stroke: var(--ink)`}
+      />
+    ))
+  }
+</svg>

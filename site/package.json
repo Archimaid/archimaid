@@ -1,0 +1,26 @@
+{
+  "name": "archimaid-site",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "render:diagrams": "node scripts/render-diagrams.mjs",
+    "render:brand": "node scripts/render-brand.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "3.7.4",
+    "@fontsource-variable/space-grotesk": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "archimaid": "file:..",
+    "astro": "7.4.11"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "typescript": "6.0.3"
+  }
+}

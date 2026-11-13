@@ -1,0 +1,94 @@
+---
+import type { ElementType } from 'archimaid/language';
+import { elementTypes, relationshipTypes } from 'archimaid/language';
+import ElementIcon from './ElementIcon.astro';
+
+interface Feature {
+  readonly icon: ElementType;
+  readonly layer: string;
+  readonly title: string;
+  readonly text: string;
+}
+
+const elementCount = Object.keys(elementTypes).length;
+const relationshipCount = relationshipTypes.length;
+
+const features: readonly Feature[] = [
+  {
+    icon: 'capability',
+    layer: 'strategy',
+    title: 'The whole language',
+    text: `All ${elementCount} element types and ${relationshipCount} relationship types of ArchiMate® 3.2, with nesting, notes and links.`,
+  },
+  {
+    icon: 'applicationComponent',
+    layer: 'application',
+    title: 'Made for CI',
+    text: 'Text, JSON or GitHub Actions output. Errors fail the build; warnings stay warnings.',
+  },
+  {
+    icon: 'node',
+    layer: 'technology',
+    title: 'Three layouts',
+    text: 'Stack the layers, use the framework grid, or let relationships drive a graph.',
+  },
+  {
+    icon: 'goal',
+    layer: 'motivation',
+    title: 'Mermaid-native',
+    text: 'Mermaid themes, accessible names, and a prebuilt bundle for pages without a bundler.',
+  },
+];
+---
+
+<section class="container section" aria-labelledby="features-heading">
+  <h2 id="features-heading" class="visually-hidden">Features</h2>
+  <ul class="features">
+    {
+      features.map((feature, index) => (
+        <li
+          data-reveal
+          style={`--reveal-delay: ${index * 90}ms; --tile: var(--${feature.layer}); --tile-ink: var(--${feature.layer}-ink)`}
+        >
+          <ElementIcon type={feature.icon} size={40} strokeWidth={1.1} />
+          <h3>{feature.title}</h3>
+          <p>{feature.text}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 26px;
+    border-radius: 20px;
+    background: var(--tile);
+    color: var(--tile-ink);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 21px;
+    letter-spacing: -0.02em;
+    color: color-mix(in oklab, var(--tile-ink), black 25%);
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+</style>

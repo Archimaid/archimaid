@@ -4,3 +4,4 @@ test/consumers/*/dist/
 *.md
 package-lock.json
 examples/*.svg
+site/

@@ -1,0 +1,86 @@
+---
+import { project } from '../lib/project';
+import GitHubIcon from './GitHubIcon.astro';
+import Logo from './Logo.astro';
+---
+
+<header class="container header">
+  <a class="brand" href="/" aria-label={`${project.name} home`}>
+    <Logo />
+    <span class="wordmark">{project.name}</span>
+    <span class="version">v{project.version}</span>
+  </a>
+  <nav aria-label="Main" class="nav">
+    <a href="/#how">How it works</a>
+    <a href="/#syntax">Syntax</a>
+    <a href={project.reference}>Reference</a>
+    <a href="/#community">Contribute</a>
+    <a class="button github" href={project.repository}>
+      <GitHubIcon />
+      GitHub
+    </a>
+  </nav>
+</header>
+
+<style>
+  .header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 20px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+
+  .wordmark {
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .version {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--white);
+  }
+
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 28px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .nav a:not(.button) {
+    text-decoration: none;
+  }
+
+  .nav a:not(.button):hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .github {
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 15px;
+  }
+
+  @media (max-width: 720px) {
+    .nav a:not(.button) {
+      display: none;
+    }
+  }
+</style>

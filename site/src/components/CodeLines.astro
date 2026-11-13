@@ -1,0 +1,43 @@
+---
+import { highlightArchiMate } from '../lib/highlight';
+
+interface Props {
+  source: string;
+  lineNumbers?: boolean;
+}
+
+const { source, lineNumbers = false } = Astro.props;
+const lines = highlightArchiMate(source);
+const numberWidth = String(lines.length).length;
+---
+
+<code
+  >{
+    lines.map((tokens, index) => (
+      <span class="line">
+        {lineNumbers && (
+          <span class="line-number" aria-hidden="true">
+            {String(index + 1).padStart(numberWidth)}
+          </span>
+        )}
+        {tokens.map((token) => (
+          <span class={`tok-${token.kind}`}>{token.text}</span>
+        ))}
+      </span>
+    ))
+  }</code
+>
+
+<style>
+  .line {
+    display: block;
+    min-height: 1lh;
+  }
+
+  .line-number {
+    display: inline-block;
+    margin-right: 2ch;
+    color: #5d5d72;
+    user-select: none;
+  }
+</style>

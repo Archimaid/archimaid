@@ -1,0 +1,186 @@
+---
+import { project } from '../lib/project';
+---
+
+<section id="community" class="container section">
+  <div class="panel" data-reveal>
+    <div class="circle" aria-hidden="true"></div>
+    <div class="square" aria-hidden="true"></div>
+    <div class="columns">
+      <div class="pitch">
+        <span class="eyebrow">Open source</span>
+        <h2>Built in the open, for the ArchiMate® community.</h2>
+        <p>
+          {project.name} is MIT-licensed and early. The syntax is still marked beta, so your feedback decides what it
+          becomes. Try it on a real diagram and tell us what broke, what felt awkward, and what you missed.
+        </p>
+        <div class="actions">
+          <a class="button feedback" href={project.newIssue}>Share feedback</a>
+          <a class="button contribute" href={project.contributing}>Contribute</a>
+        </div>
+      </div>
+      <div class="roadmap">
+        <h3>On the roadmap</h3>
+        <ul>
+          <li>
+            <strong>Relationship checks against Appendix B</strong>
+            <span>
+              Validating every relationship against the ArchiMate® 3.2 rules. Waiting on permission from The Open Group to
+              distribute the lookup.
+            </span>
+          </li>
+          <li>
+            <strong>ArchiMate® 4.0 support</strong>
+            <span>Write diagrams against the next version of the standard, alongside 3.2.</span>
+          </li>
+          <li>
+            <strong>Classic and new notation themes</strong>
+            <span>Choose between the classic ArchiMate® colours and the newest palette.</span>
+          </li>
+          <li>
+            <strong>An online playground</strong>
+            <span>Write and render diagrams in the browser, nothing to install.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .panel {
+    position: relative;
+    padding: clamp(28px, 5vw, 64px);
+    border: 2px solid var(--ink);
+    border-radius: 28px;
+    background: var(--ink);
+    color: #f3f2ee;
+    overflow: hidden;
+  }
+
+  .circle {
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 220px;
+    height: 220px;
+    border-radius: 999px;
+    background: var(--business);
+  }
+
+  .square {
+    position: absolute;
+    right: 120px;
+    top: 90px;
+    width: 110px;
+    height: 110px;
+    border-radius: 22px;
+    background: var(--application);
+    transform: rotate(14deg);
+  }
+
+  .columns {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    gap: 48px;
+  }
+
+  .pitch {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .eyebrow,
+  h3 {
+    color: #c3b6ff;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(32px, 4.2vw, 52px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  .pitch p {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #c9c8d4;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 8px;
+  }
+
+  .feedback {
+    background: var(--business);
+    border-color: var(--business);
+    box-shadow: 3px 3px 0 var(--application);
+  }
+
+  .feedback:hover {
+    box-shadow: 5px 5px 0 var(--application);
+  }
+
+  .contribute {
+    background: transparent;
+    color: #f3f2ee;
+    border-color: #f3f2ee;
+    box-shadow: 3px 3px 0 var(--motivation);
+  }
+
+  .contribute:hover {
+    color: #f3f2ee;
+    box-shadow: 5px 5px 0 var(--motivation);
+  }
+
+  .roadmap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-self: end;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    border: 1.5px solid #3a3a4a;
+    border-radius: 16px;
+    background: #22222c;
+  }
+
+  strong {
+    font-size: 17px;
+  }
+
+  li span {
+    font-size: 15px;
+    line-height: 1.55;
+    color: #b9b8c6;
+  }
+</style>

@@ -1,0 +1,130 @@
+---
+import { validateArchiMate } from 'archimaid/language';
+import { project } from '../lib/project';
+import CodeLines from './CodeLines.astro';
+
+const writeExample = `element businessActor customer "Customer"
+relationship assignment performs customer -> fulfil`;
+
+const misspeltFile = 'fulfilment.mmd';
+const misspeltSource = `archimate-beta
+  element bussinessActor customer "Customer"
+`;
+const misspeltError = validateArchiMate(misspeltSource).diagnostics.find((entry) => entry.severity === 'error');
+if (!misspeltError) throw new Error('The misspelt example no longer produces an error; update How it works.');
+
+const cli = project.packageName;
+---
+
+<section id="how" class="container section">
+  <div class="section-heading" data-reveal>
+    <span class="eyebrow">How it works</span>
+    <h2>Write it. Check it. Render it.</h2>
+    <p>Your diagrams sit next to your code, change in pull requests, and never drift from a binary file nobody can diff.</p>
+  </div>
+
+  <ol class="steps">
+    <li class="step" data-reveal style="--reveal-delay: 0ms; --accent: var(--business); --accent-stroke: var(--business-stroke); --accent-ink: var(--business-ink)">
+      <span class="label">1 · Write</span>
+      <h3>Plain text, in any Markdown file</h3>
+      <p>
+        Declare elements, then relate them in long form with an ID, or with short connectors that look like the lines they
+        draw. Nest elements in blocks and attach notes and links.
+      </p>
+      <pre class="code-block"><CodeLines source={writeExample} /></pre>
+    </li>
+
+    <li class="step" data-reveal style="--reveal-delay: 110ms; --accent: var(--application); --accent-stroke: var(--application-stroke); --accent-ink: var(--application-ink)">
+      <span class="label">2 · Check</span>
+      <h3>Errors that tell you the fix</h3>
+      <p>
+        <code>{cli} validate</code> reports every problem with its line and column, and suggests the keyword you meant. GitHub
+        Actions annotations included.
+      </p>
+      <pre class="code-block"><code><span class="tok-operator">$</span> npx {cli} validate docs/
+<span class="tok-muted">{misspeltFile}:{misspeltError.line}:{misspeltError.column}:</span> {misspeltError.message}</code></pre>
+    </li>
+
+    <li class="step" data-reveal style="--reveal-delay: 220ms; --accent: var(--technology); --accent-stroke: var(--technology-stroke); --accent-ink: var(--technology-ink)">
+      <span class="label">3 · Render</span>
+      <h3>Wherever Mermaid runs</h3>
+      <p>
+        Register the plugin and Mermaid draws your <code>archimate-beta</code> blocks. Or write a standalone SVG from the command
+        line.
+      </p>
+      <pre class="code-block"><code><span class="tok-keyword">import</span> {'{'} <span class="tok-identifier">archimate</span> {'}'} <span class="tok-keyword">from</span> <span class="tok-string">'{project.packageName}'</span>;
+<span class="tok-identifier">mermaid</span>.<span class="tok-layer-application">registerExternalDiagrams</span>([<span class="tok-identifier">archimate</span>]);</code></pre>
+    </li>
+  </ol>
+</section>
+
+<style>
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+    gap: 28px;
+    margin: 48px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 28px;
+    border: 2px solid var(--ink);
+    border-radius: 20px;
+    background: var(--white);
+    box-shadow: 6px 6px 0 var(--accent);
+    transition: transform 0.15s ease;
+  }
+
+  .step:hover {
+    transform: translateY(-3px);
+  }
+
+  .label {
+    align-self: flex-start;
+    padding: 6px 14px;
+    border: 1.5px solid var(--accent-stroke);
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  p code {
+    font-size: 14px;
+  }
+
+  .code-block {
+    margin-top: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step {
+      transition: none;
+    }
+
+    .step:hover {
+      transform: none;
+    }
+  }
+</style>

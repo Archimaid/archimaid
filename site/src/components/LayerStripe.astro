@@ -1,0 +1,26 @@
+---
+interface Props {
+  height?: number;
+  rounded?: boolean;
+}
+
+const { height = 6, rounded = false } = Astro.props;
+const layers = ['strategy', 'business', 'application', 'technology', 'implementation', 'motivation'];
+---
+
+<div class:list={['stripe', { rounded }]} style={`--stripe-height: ${height}px`} aria-hidden="true">
+  {layers.map((layer) => <span style={`background: var(--${layer})`} />)}
+</div>
+
+<style>
+  .stripe {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    height: var(--stripe-height);
+  }
+
+  .rounded {
+    border-radius: 4px;
+    overflow: hidden;
+  }
+</style>

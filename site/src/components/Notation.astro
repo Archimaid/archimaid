@@ -1,0 +1,46 @@
+---
+import type { ElementType } from 'archimaid/language';
+import { elementNotation } from '../lib/notation';
+import ElementShape from './ElementShape.astro';
+
+const samples: readonly ElementType[] = [
+  'capability',
+  'businessActor',
+  'applicationComponent',
+  'node',
+  'workPackage',
+  'goal',
+];
+---
+
+<section class="container section">
+  <div class="section-heading" data-reveal>
+    <span class="eyebrow">Notation</span>
+    <h2>Every layer in its own colour.</h2>
+    <p>The familiar ArchiMate® layer colours and icons, so a diagram reads the way your team expects.</p>
+  </div>
+  <ul class="samples">
+    {
+      samples.map((type, index) => (
+        <li data-reveal style={`--reveal-delay: ${index * 70}ms`}>
+          <ElementShape type={type} label={elementNotation(type).name} width={212} />
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .samples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 40px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    line-height: 0;
+  }
+</style>
