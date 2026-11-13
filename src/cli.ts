@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { ArchiMateError, parseArchiMate } from './language.js';
+import { validateArchiMate } from './language.js';
 
 const usage = 'Usage: archimate validate <file.mmd|->';
 const [command, file, ...extra] = process.argv.slice(2);
@@ -16,15 +16,17 @@ if (command === '--help' && file === undefined) {
   const input = file === '-' ? '<stdin>' : file;
   try {
     const source = file === '-' ? readFileSync(0, 'utf8') : await readFile(file, 'utf8');
-    parseArchiMate(source);
-    console.log(`${input}: diagram syntax and structure checks passed`);
+    const { diagnostics } = validateArchiMate(source);
+    for (const { severity, line, column, message } of diagnostics) {
+      console.error(`${input}:${line}:${column}: ${severity === 'warning' ? 'warning: ' : ''}${message}`);
+    }
+    if (diagnostics.some(({ severity }) => severity === 'error')) {
+      process.exitCode = 1;
+    } else {
+      console.log(`${input}: diagram syntax and structure checks passed`);
+    }
   } catch (error) {
-    const location =
-      error instanceof ArchiMateError ? `:${error.line}:${error.column}` : '';
-    const message = error instanceof ArchiMateError
-      ? error.detail
-      : error instanceof Error ? error.message : String(error);
-    console.error(`${input}${location}: ${message}`);
+    console.error(`${input}: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
   }
 }

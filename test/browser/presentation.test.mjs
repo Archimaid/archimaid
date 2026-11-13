@@ -34,7 +34,9 @@ function paints(page, id, source) {
       };
       const label = svg.querySelector('.archimate-edge-label');
       return {
-        canvas: style(':scope > rect[aria-hidden="true"]').fill,
+        canvas: svg.querySelector(':scope > rect[aria-hidden="true"]') ? style(':scope > rect[aria-hidden="true"]').fill
+          : null,
+        fontSize: style('[data-archimate-element="suite"] text').fontSize,
         title: style('.archimate-title').fill,
         element: style('[data-archimate-element="suite"] .archimate-outline').fill,
         note: style('[data-archimate-note="review"] .archimate-note-outline').fill,
@@ -89,6 +91,94 @@ relationship realization realizes billing -> service`;
       assert.equal(paint.noteText, black);
     }
   });
+});
+
+test('the base theme takes colours and font size from theme variables', async () => {
+  const source = `${nested}
+title: Order fulfilment
+element applicationService service "Order service"
+relationship realization realizes billing -> service`;
+  const based = (variables) => `---\nconfig:\n  theme: base\n  themeVariables:\n${
+    Object.entries(variables).map(([key, value]) => `    ${key}: '${value}'`).join('\n')}\n---\n${source}`;
+  const luminance = (rgb) => {
+    const [red, green, blue] = rgb.match(/\d+/g).map(Number).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  };
+  await withMermaidPage(async (page) => {
+    const dark = await paints(page, 'base-dark', based({ background: '#1e1e2e' }));
+    assert.equal(dark.canvas, 'rgb(30, 30, 46)');
+    assert.ok(luminance(dark.edge) > 0.5, `relationship stroke ${dark.edge} is not light`);
+    assert.ok(dark.hollowMarker.some(({ fill }) => fill === 'rgb(30, 30, 46)'));
+    assert.equal(dark.label.backing, 'rgb(30, 30, 46)');
+    assert.ok(luminance(dark.label.ink) > 0.5, `label ink ${dark.label.ink} is not light`);
+
+    const declared = await paints(page, 'base-declared', based({
+      background: '#2a2a2a', lineColor: '#ff8080', textColor: '#80ff80', fontSize: '18px',
+    }));
+    assert.equal(declared.edge, 'rgb(255, 128, 128)');
+    assert.equal(declared.label.ink, 'rgb(128, 255, 128)');
+    assert.equal(declared.fontSize, '18px');
+    const flagged = await paints(page, 'base-flagged', based({ background: '#808080' }).replace(
+      '    background:', '    darkMode: true\n    background:'));
+    assert.equal(flagged.canvas, 'rgb(128, 128, 128)');
+    assert.ok(flagged.hollowMarker.length === 2, 'dark mode draws marker outlines');
+
+    const light = await paints(page, 'base-light', based({ background: '#ffffff', lineColor: '#123456' }));
+    assert.equal(light.canvas, 'rgb(255, 255, 255)');
+    assert.equal(light.edge, 'rgb(18, 52, 86)');
+    for (const paint of [dark, light]) assert.equal(paint.element, 'rgb(184, 231, 252)');
+  });
+});
+
+test('base theme backgrounds in named, alpha and transparent forms keep lines and labels readable', async () => {
+  const source = `${nested}
+title: Order fulfilment
+element applicationService service "Order service"
+relationship realization realizes billing -> service`;
+  const based = (background) => `---\nconfig:\n  theme: base\n  themeVariables:\n    background: '${background}'\n---\n${source}`;
+  const parse = (colour) => {
+    const [red = 0, green = 0, blue = 0, alpha = 1] = (colour.match(/[\d.]+/g) ?? [0, 0, 0, 0]).map(Number);
+    return { red, green, blue, alpha };
+  };
+  const luminance = (colour) => {
+    const { red, green, blue } = parse(colour);
+    const [r, g, b] = [red, green, blue].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a, b) => {
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05);
+  };
+  await withMermaidPage(async (page) => {
+    for (const [background, canvas] of [
+      ['navy', 'rgb(0, 0, 128)'], ['#1e1e2eff', 'rgb(30, 30, 46)'], ['transparent', 'rgb(255, 255, 255)'],
+    ]) {
+      const paint = await paints(page, `base-${background.replace(/\W/g, '')}`, based(background));
+      assert.equal(paint.canvas, canvas, background);
+      assert.ok(contrast(paint.edge, paint.canvas) >= 4.5, `${background}: line ${paint.edge} on ${paint.canvas}`);
+      assert.equal(parse(paint.label.backing).alpha, 1, `${background}: label backing ${paint.label.backing}`);
+      assert.ok(contrast(paint.label.ink, paint.label.backing) >= 4.5,
+        `${background}: label ${paint.label.ink} on ${paint.label.backing}`);
+      assert.ok(paint.hollowMarker.some(({ fill }) => parse(fill).alpha === 1), `${background}: hollow marker fill`);
+    }
+  });
+});
+
+test('a transparent background omits the canvas and keeps label backings', async () => {
+  const transparent = await withMermaidPage((page) => paints(page, 'transparent', `${nested}
+title: Order fulfilment
+element applicationService service "Order service"
+relationship realization realizes billing -> service`), { background: 'transparent' });
+  assert.equal(transparent.canvas, null);
+  assert.equal(transparent.label.backing, 'rgb(255, 255, 255)');
+  assert.equal(transparent.edge, 'rgb(0, 0, 0)');
+  assert.equal(transparent.fontSize, '14px');
 });
 
 function viewport(page) {

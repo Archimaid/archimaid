@@ -1,4 +1,5 @@
 import type { Arrangement, LayoutRelationship, PlacedNode, SizedNode } from "./architectureLayout.js";
+import { required } from "./invariant.js";
 
 interface Endpoint {
   owner: SizedNode;
@@ -159,25 +160,50 @@ function pack(nodes: readonly PlacedNode[], preferred: ReadonlyMap<PlacedNode, P
   }
 }
 
+function rowWidth(nodes: readonly SizedNode[], gap: number): number {
+  return nodes.reduce((sum, { node }) => sum + node.width + gap, -gap);
+}
+
+function initialOrder(nodes: readonly SizedNode[], triggers: ReadonlyMap<string, readonly string[]>): PlacedNode[] {
+  return sequence([...nodes].sort((a, b) =>
+    Number(b.column === "passiveStructure") - Number(a.column === "passiveStructure")), triggers);
+}
+
+function wrapRank(rank: Rank, ordered: readonly PlacedNode[], gap: number, maxWidth: number): Rank[] {
+  const width = rowWidth(rank.nodes, gap);
+  if (width <= maxWidth) return [rank];
+  const owners = new Map(rank.nodes.map((owner) => [owner.node, owner]));
+  const count = Math.ceil((width + gap) / (maxWidth + gap));
+  // Balance the rows around an equal share instead of filling each row to the limit.
+  const share = (width + gap) / count;
+  const rows: SizedNode[][] = [];
+  let row: SizedNode[] = [];
+  let used = 0;
+  for (const node of ordered) {
+    const owner = required(owners.get(node), "the ranked node of a wrapped row");
+    const size = node.width + gap;
+    if (row.length && (used + size > share + size / 2 || used + node.width > maxWidth)) {
+      rows.push(row);
+      row = [];
+      used = 0;
+    }
+    row.push(owner);
+    used += size;
+  }
+  rows.push(row);
+  return rows.map((nodes) => ({ layer: rank.layer, nodes }));
+}
+
 export function placeConnectedLayers(
   nodes: readonly SizedNode[],
   layers: readonly string[],
   relationships: readonly LayoutRelationship[],
   gap: number,
   layerGap: number,
+  maxRowWidth: number,
 ): Arrangement {
   const projected = project(nodes, relationships);
   const links = projected.filter(({ source, target }) => source.owner !== target.owner);
-  const ranks: Rank[] = layers.flatMap((layer) => layerRanks(
-    nodes.filter(({ row }) => row === layer),
-    links.filter(({ source, target }) => source.owner.row === layer && target.owner.row === layer),
-  ).map((nodes) => ({ layer, nodes })));
-  const rankByNode = new Map(ranks.flatMap((rank) => rank.nodes.map((node) => [node, rank] as const)));
-  const processRanks = new Set<Rank>();
-  for (const { source, target, type } of projected) {
-    const rank = rankByNode.get(source.owner);
-    if (type === "triggering" && rank && rank === rankByNode.get(target.owner)) processRanks.add(rank);
-  }
   const incident = new Map<SizedNode, Link[]>();
   const triggers = new Map<string, string[]>();
   for (const link of links) {
@@ -193,15 +219,27 @@ export function placeConnectedLayers(
       else triggers.set(source.owner.node.id, [target.owner.node.id]);
     }
   }
+  const ranks: Rank[] = layers.flatMap((layer) => layerRanks(
+    nodes.filter(({ row }) => row === layer),
+    links.filter(({ source, target }) => source.owner.row === layer && target.owner.row === layer),
+  ).flatMap((nodes) => {
+    const rank = { layer, nodes };
+    return wrapRank(rank, initialOrder(nodes, triggers), gap, maxRowWidth);
+  }));
+  const rankByNode = new Map(ranks.flatMap((rank) => rank.nodes.map((node) => [node, rank] as const)));
+  const processRanks = new Set<Rank>();
+  for (const { source, target, type } of projected) {
+    const rank = rankByNode.get(source.owner);
+    if (type === "triggering" && rank && rank === rankByNode.get(target.owner)) processRanks.add(rank);
+  }
 
   let anchor = 0;
   let anchorWidth = 0;
   let anchorHasProcess = false;
   const original = new Map<PlacedNode, number>();
   for (const [index, rank] of ranks.entries()) {
-    const ordered = sequence([...rank.nodes].sort((a, b) =>
-      Number(b.column === "passiveStructure") - Number(a.column === "passiveStructure")), triggers);
-    const width = ordered.reduce((sum, node) => sum + node.width + gap, -gap);
+    const ordered = initialOrder(rank.nodes, triggers);
+    const width = rowWidth(rank.nodes, gap);
     const hasProcess = processRanks.has(rank);
     if ((hasProcess && !anchorHasProcess) || (hasProcess === anchorHasProcess && width > anchorWidth)) {
       anchor = index;

@@ -228,6 +228,20 @@ export const relationshipTypes = [
 
 export type RelationshipType = (typeof relationshipTypes)[number];
 
+export const relationshipNames = {
+  composition: "Composition",
+  aggregation: "Aggregation",
+  assignment: "Assignment",
+  realization: "Realization",
+  serving: "Serving",
+  access: "Access",
+  influence: "Influence",
+  association: "Association",
+  triggering: "Triggering",
+  flow: "Flow",
+  specialization: "Specialization",
+} as const satisfies Record<RelationshipType, string>;
+
 // Markers are indexed by model source and target.
 const relationshipNotation = {
   composition: { line: "solid", start: "filledDiamond", end: "none" },

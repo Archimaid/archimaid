@@ -1,0 +1,12 @@
+{
+  "name": "archimate-consumer-webpack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "webpack --config webpack.config.mjs"
+  },
+  "devDependencies": {
+    "webpack": "5.112.2",
+    "webpack-cli": "7.2.3"
+  }
+}

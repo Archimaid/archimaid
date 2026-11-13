@@ -6,7 +6,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 
 async function bundleHost(pluginOptions) {
   const pluginExport = pluginOptions === undefined ? 'archimate' : 'createArchiMatePlugin';
-  const plugin = pluginOptions === undefined ? 'plugin' : `plugin(${JSON.stringify(pluginOptions)})`;
+  // JSON has no Infinity, which is a meaningful option value (maxRowWidth: Infinity turns wrapping off).
+  const options = Object.entries(pluginOptions ?? {}).map(([name, value]) =>
+    `${JSON.stringify(name)}: ${typeof value === 'number' ? String(value) : JSON.stringify(value)}`);
+  const plugin = pluginOptions === undefined ? 'plugin' : `plugin({ ${options.join(', ')} })`;
   const { outputFiles } = await build({
     stdin: {
       resolveDir: root,

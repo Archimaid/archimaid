@@ -73,6 +73,18 @@ test('Mermaid registers, validates and renders ArchiMate diagrams in the same ho
   });
 });
 
+test('a multi-line accDescr block becomes the accessible description', async () => {
+  await withMermaidPage(async (page) => {
+    const { description } = await render(page, 'described', `archimate-beta
+  accDescr {
+    A fulfilment clerk
+    fulfils orders.
+  }
+  element businessRole clerk "Fulfilment clerk"`);
+    assert.equal(description, 'A fulfilment clerk\nfulfils orders.');
+  });
+});
+
 test('all catalogue entries render with centred labels and corner icons', async () => {
   const elements = Object.entries(elementTypes).map(([type, { name }], index) => ({
     id: `element_${index}`,
@@ -144,7 +156,8 @@ test('standalone SVG preserves literal entity-like text and nonbreaking spaces',
       return {
         valid: !document.querySelector('parsererror'),
         title: document.querySelector('title')?.textContent,
-        label: document.querySelector('[data-archimate-element] text')?.textContent,
+        label: Array.from(document.querySelectorAll('[data-archimate-element] text tspan'),
+          (line) => line.textContent).join(' '),
       };
     }, svg);
     assert.deepEqual(rendered, { valid: true, title: 'Release review', label });
