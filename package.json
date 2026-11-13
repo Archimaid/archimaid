@@ -38,7 +38,7 @@
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "mermaid": "12.3.0"
+    "mermaid": "^12.3.0"
   },
   "dependencies": {
     "chevrotain": "13.2.0",

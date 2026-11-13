@@ -3,7 +3,7 @@
 [![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](package.json)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Node.js 22.12 or later](https://img.shields.io/badge/Node.js-%E2%89%A522.12-339933)](https://nodejs.org/)
-[![Mermaid 12.3.0](https://img.shields.io/badge/Mermaid-12.3.0-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
+[![Mermaid 12.3 or later](https://img.shields.io/badge/Mermaid-%E2%89%A512.3-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
 [![ArchiMate 3.2](https://img.shields.io/badge/ArchiMate-3.2-6d44ae)](https://publications.opengroup.org/standards/archimate/c226)
 
 Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, relationship-backed nesting, and notes. The `archimate-beta` syntax is experimental.
