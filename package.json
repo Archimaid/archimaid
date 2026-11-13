@@ -24,13 +24,17 @@
     "./language": {
       "types": "./dist/language.d.ts",
       "import": "./dist/language.js"
+    },
+    "./bundle": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/bundle/archimate-mermaid.esm.min.mjs"
     }
   },
   "bin": {
     "archimate": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-bundle.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "test:browser": "npm run build && node --test test/browser/*.test.mjs",

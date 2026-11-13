@@ -141,6 +141,27 @@ const { svg } = await mermaid.render('order-fulfilment', source);
 document.querySelector('#diagram').innerHTML = svg;
 ```
 
+Without a bundler, load Mermaid's and this package's prebuilt ES modules, for example from a CDN.
+
+```html
+<pre class="mermaid">
+archimate-beta
+  element businessRole clerk "Fulfilment clerk"
+  element businessProcess fulfil "Fulfil order"
+  clerk @==> fulfil
+</pre>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
+  import { archimate } from 'https://cdn.jsdelivr.net/npm/archimate-mermaid@0/dist/bundle/archimate-mermaid.esm.min.mjs';
+
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+  await mermaid.registerExternalDiagrams([archimate]);
+  await mermaid.run();
+</script>
+```
+
+The bundle is also exported as `archimate-mermaid/bundle`. It includes the parser and renderer, and loads ELK from a separate file only when a `layout graph` diagram is rendered.
+
 Live rendering requires a host that registers the external diagram. For GitHub Markdown, commit the `.mmd` source alongside its exported SVG and link to the SVG with `![Diagram title](order-fulfilment.svg)`. This keeps the model reviewable in Git and the image visible to readers. [Mermaid external diagram API](https://mermaid.js.org/config/setup/mermaid/interfaces/Mermaid.html#registerexternaldiagrams)
 
 The standalone validator skips a leading YAML frontmatter block that starts and ends with a `---` line, and it reports line numbers for the whole file. It does not read the frontmatter's content, so use the DSL's `title:`, `accTitle:`, and `accDescr:` declarations for metadata the validator should check. Use `accDescr { … }` for a description that spans several lines, and do not combine it with `accDescr:`. A `%%` that follows a space ends a `title:`, `accTitle:` or `accDescr:` value as a comment. To keep it, or to use escapes such as `\u0025`, write the whole value as one double-quoted string, for example `title: "Load %% budget"`. To show a Mermaid directive as literal text in a quoted label, escape its percent signs as `\u0025`.
