@@ -38,13 +38,19 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test test/*.test.mjs",
     "test:browser": "npm run build && node --test test/browser/*.test.mjs",
-    "render": "npm run build --silent && node scripts/render.mjs",
+    "render": "npm run build --silent && node dist/cli.js render",
     "render:preview": "npm run build --silent && node scripts/render-element-preview.mjs",
     "reference": "npm run build --silent && node scripts/generate-reference.mjs",
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "mermaid": "^12.3.0"
+    "mermaid": "^12.3.0",
+    "playwright": "^1.56.1"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
   },
   "dependencies": {
     "chevrotain": "13.2.0",

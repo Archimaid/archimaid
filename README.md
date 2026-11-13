@@ -16,22 +16,24 @@ Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and 
 
 ## Quick start
 
-Use Node.js 22.12 or later. From a checkout, install dependencies and validate a bundled example.
+Use Node.js 22.12 or later and Mermaid 12.3 or a later 12.x release. The package is not on npm yet; until it is, install it from a local archive as described under [Development](#development).
 
 ```sh
-npm ci
-npm run build
-node dist/cli.js validate examples/order-fulfilment.mmd
+npm install archimate-mermaid mermaid
+npx archimate validate docs/
 ```
 
-The validator prints every problem it finds as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `-` as the input path to read from standard input.
+`archimate validate` accepts files, directories and `-` for standard input. It checks `.mmd` files and the `archimate-beta` diagrams in fenced `mermaid` code blocks of Markdown files, and reports Markdown line numbers. In a directory it skips Mermaid files of other diagram types. It prints every problem as `file:line:column: message`, suggests the closest valid keyword for a misspelt type, and prefixes warnings, such as a repeated shorthand relationship, with `warning:`. It exits with status 1 if there is any error, and with status 0 if there are only warnings. Use `--format json` for machine-readable output, or `--format github` for annotations in a GitHub Actions log.
 
-To render a standalone SVG, install Playwright's Chromium browser and run the checkout's render command.
+To render a standalone SVG, install Playwright and its Chromium browser.
 
 ```sh
+npm install --save-dev playwright
 npx playwright install chromium
-npm run render -- examples/order-fulfilment.mmd order-fulfilment.svg
+npx archimate render diagram.mmd diagram.svg
 ```
+
+`archimate render` accepts `--theme default|base|dark|forest|neutral` and `--background theme|transparent`. Run `npx archimate --help` for all options.
 
 ## Examples
 
@@ -114,13 +116,6 @@ Nesting supports Composition, Aggregation, Assignment, Realization, and Access f
 Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to attach it to an element's top edge (its bottom edge in `direction BT`, so relationships leaving upward stay clear of it). Notes are diagram annotations and can be endpoints of the supported relationship types. Use `\n` for a line break.
 
 ## Host integration
-
-Build a local package archive with `npm pack` in the plugin checkout. In your host project, install that archive with Mermaid 12.3.0.
-
-```sh
-npm install mermaid@12.3.0 /path/to/archimate-mermaid-0.1.0.tgz
-npm exec -- archimate validate diagram.mmd
-```
 
 Add a `<div id="diagram"></div>` to your page and run this module through your JavaScript bundler.
 
@@ -238,6 +233,12 @@ npm test
 npx playwright install chromium
 npm run test:browser
 npm pack --dry-run
+```
+
+To try an unpublished version in another project, build an archive with `npm pack` in the checkout and install it there.
+
+```sh
+npm install mermaid /path/to/archimate-mermaid-0.1.0.tgz
 ```
 
 Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
