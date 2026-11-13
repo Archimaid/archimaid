@@ -24,7 +24,7 @@ async function buildHost(pluginExport, plugin) {
       sourcefile: 'archimate-browser-host.js',
       contents: `
         import mermaid from 'mermaid';
-        import { ${pluginExport} as plugin } from 'archi-mermaid';
+        import { ${pluginExport} as plugin } from 'archimaid';
 
         globalThis.archimateHost = (async () => {
           mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });

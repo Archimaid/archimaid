@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import { elementTypes, relationshipTypes } from 'archi-mermaid/language';
+import { elementTypes, relationshipTypes } from 'archimaid/language';
 import { closeMermaidBrowser, withMermaidPage } from './mermaid-browser.mjs';
 
 const elements = Object.entries(elementTypes).map(([type, { name, category }]) => ({

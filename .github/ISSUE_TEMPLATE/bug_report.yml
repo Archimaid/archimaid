@@ -21,7 +21,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: archi-mermaid, Mermaid, and the browser or Node.js version.
-      placeholder: archi-mermaid 0.1.0, Mermaid 12.3.0, Chrome 142
+      description: archimaid, Mermaid, and the browser or Node.js version.
+      placeholder: archimaid 0.1.0, Mermaid 12.3.0, Chrome 142
     validations:
       required: true

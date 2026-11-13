@@ -1,22 +1,26 @@
 {
-  "name": "archi-mermaid",
+  "name": "archimaid",
   "version": "0.1.0",
   "description": "ArchiMate for Mermaid: write, validate and render ArchiMate 3.2 diagrams as an external Mermaid diagram type",
   "keywords": [
     "archimate",
+    "archimate-3",
     "mermaid",
+    "mermaid-plugin",
+    "mermaid-diagram",
     "enterprise-architecture",
+    "architecture-diagrams",
     "diagrams-as-code"
   ],
   "license": "MIT",
   "author": "Berny (https://github.com/Berny-art)",
-  "homepage": "https://github.com/Berny-art/archi-mermaid#readme",
+  "homepage": "https://github.com/Berny-art/archimaid#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Berny-art/archi-mermaid.git"
+    "url": "git+https://github.com/Berny-art/archimaid.git"
   },
   "bugs": {
-    "url": "https://github.com/Berny-art/archi-mermaid/issues"
+    "url": "https://github.com/Berny-art/archimaid/issues"
   },
   "type": "module",
   "engines": {
@@ -26,7 +30,7 @@
     "dist/",
     "examples/*.mmd",
     "examples/*.svg",
-    "skills/archi-mermaid/SKILL.md",
+    "skills/archimaid/SKILL.md",
     "docs/reference.md",
     "FOUNDATION.md",
     "CHANGELOG.md"
@@ -42,11 +46,11 @@
     },
     "./bundle": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/bundle/archi-mermaid.esm.min.mjs"
+      "import": "./dist/bundle/archimaid.esm.min.mjs"
     }
   },
   "bin": {
-    "archi-mermaid": "./dist/cli.js"
+    "archimaid": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-bundle.mjs",

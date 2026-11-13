@@ -4,7 +4,7 @@ import { elementTypes, relationshipConnectors, relationshipNames, relationshipTy
 
 const root = new URL('../', import.meta.url);
 export const referencePath = fileURLToPath(new URL('docs/reference.md', root));
-export const skillPath = fileURLToPath(new URL('skills/archi-mermaid/SKILL.md', root));
+export const skillPath = fileURLToPath(new URL('skills/archimaid/SKILL.md', root));
 
 const skillStart = '<!-- element-types:start -->';
 const skillEnd = '<!-- element-types:end -->';

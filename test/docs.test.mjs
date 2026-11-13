@@ -4,7 +4,7 @@ import test from 'node:test';
 import { isArchiMateSource } from '../dist/cli/sources.js';
 import { validateArchiMate } from '../dist/language.js';
 
-const documents = ['README.md', 'skills/archi-mermaid/SKILL.md'];
+const documents = ['README.md', 'skills/archimaid/SKILL.md'];
 
 function fencedBlocks(markdown) {
   const blocks = [];

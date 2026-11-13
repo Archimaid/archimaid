@@ -29,7 +29,7 @@ function mermaidDirectory(): string {
   try {
     return dirname(fileURLToPath(import.meta.resolve('mermaid')));
   } catch (error) {
-    throw new RenderSetupError('archi-mermaid render needs Mermaid. Install it with: npm install mermaid', {
+    throw new RenderSetupError('archimaid render needs Mermaid. Install it with: npm install mermaid', {
       cause: error,
     });
   }
@@ -41,7 +41,7 @@ async function launchChromium(): Promise<Browser> {
     ({ chromium } = await import('playwright'));
   } catch (error) {
     throw new RenderSetupError(
-      'archi-mermaid render needs Playwright. Install it with: npm install --save-dev playwright && npx playwright install chromium',
+      'archimaid render needs Playwright. Install it with: npm install --save-dev playwright && npx playwright install chromium',
       { cause: error },
     );
   }
@@ -106,7 +106,7 @@ export async function renderSvg(source: string, { theme, background }: RenderOpt
     const input: PageInput = {
       source,
       mermaidUrl: `${origin}/mermaid/mermaid.esm.min.mjs`,
-      pluginUrl: `${origin}/plugin/archi-mermaid.esm.min.mjs`,
+      pluginUrl: `${origin}/plugin/archimaid.esm.min.mjs`,
       config: { startOnLoad: false, securityLevel: 'strict', ...(theme !== undefined && { theme }) },
       background,
       diagramId,
