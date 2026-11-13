@@ -1,0 +1,68 @@
+---
+import type { ElementType } from 'archimaid/language';
+import { elementNotation } from '../lib/notation';
+
+interface Props {
+  type: ElementType;
+  label?: string;
+  width?: number;
+  height?: number;
+  outlineColor?: string;
+}
+
+const { type, label, width = 184, height = 68, outlineColor } = Astro.props;
+const { name, layer, outline, icon } = elementNotation(type);
+
+const inset = 1;
+const right = width - inset;
+const bottom = height - inset;
+const cut = 10;
+const outlinePath =
+  outline === 'chamfered'
+    ? `M ${inset + cut} ${inset} H ${right - cut} L ${right} ${inset + cut} V ${bottom - cut} L ${right - cut} ${bottom} H ${inset + cut} L ${inset} ${bottom - cut} V ${inset + cut} Z`
+    : null;
+const radius = outline === 'rounded' ? 10 : 0;
+const shapeStyle = `fill: var(--${layer}); stroke: ${outlineColor ?? `var(--${layer}-stroke)`}`;
+const ink = `var(--${layer}-ink)`;
+const accessibleName = label ? `${label}, ${name}` : name;
+---
+
+<svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={accessibleName}>
+  {
+    outlinePath ? (
+      <path d={outlinePath} stroke-width="1.6" style={shapeStyle} />
+    ) : (
+      <rect
+        x={inset}
+        y={inset}
+        width={width - 2 * inset}
+        height={height - 2 * inset}
+        rx={radius}
+        stroke-width="1.6"
+        style={shapeStyle}
+      />
+    )
+  }
+  <g
+    transform={`translate(${width - 26} 8)`}
+    stroke-width="1.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    style={`stroke: ${ink}; fill: none`}
+  >
+    {icon.map((path) => <path d={path.d} style={path.fill === 'ink' ? `fill: ${ink}` : undefined} />)}
+  </g>
+  {
+    label && (
+      <text
+        x={width / 2}
+        y={height / 2 + 4}
+        text-anchor="middle"
+        dominant-baseline="central"
+        style={`fill: ${ink}; font-family: var(--font-sans); font-size: 15px; font-weight: 500`}
+      >
+        {label}
+      </text>
+    )
+  }
+</svg>

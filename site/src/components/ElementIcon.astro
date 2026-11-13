@@ -1,0 +1,27 @@
+---
+import type { ElementType } from 'archimaid/language';
+import { elementNotation } from '../lib/notation';
+
+interface Props {
+  type: ElementType;
+  size?: number;
+  strokeWidth?: number;
+}
+
+const { type, size = 16, strokeWidth = 1.15 } = Astro.props;
+const { icon, layer } = elementNotation(type);
+const ink = `var(--${layer}-ink)`;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 16 16"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  style={`stroke: ${ink}; fill: none`}
+  aria-hidden="true"
+>
+  {icon.map((path) => <path d={path.d} style={path.fill === 'ink' ? `fill: ${ink}` : undefined} />)}
+</svg>

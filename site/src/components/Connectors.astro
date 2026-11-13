@@ -1,0 +1,179 @@
+---
+import { relationshipConnectors, relationshipNames } from 'archimaid/language';
+import { project } from '../lib/project';
+
+type LineStyle = 'solid' | 'dotted' | 'dashed';
+type Start = 'none' | 'dot' | 'diamond';
+type End = 'none' | 'open' | 'filled' | 'hollow' | 'small';
+
+interface Showcase {
+  readonly connector: string;
+  readonly tint: string;
+  readonly line: LineStyle;
+  readonly start: Start;
+  readonly end: End;
+}
+
+const showcase: readonly Showcase[] = [
+  { connector: '-->', tint: 'application', line: 'solid', start: 'none', end: 'open' },
+  { connector: '..|>', tint: 'motivation', line: 'dotted', start: 'none', end: 'hollow' },
+  { connector: '@==>', tint: 'business', line: 'solid', start: 'dot', end: 'filled' },
+  { connector: '..>', tint: 'technology', line: 'dotted', start: 'none', end: 'small' },
+  { connector: '*--', tint: 'strategy', line: 'solid', start: 'diamond', end: 'none' },
+  { connector: '==>', tint: 'implementation', line: 'solid', start: 'none', end: 'filled' },
+  { connector: '-.->', tint: 'motivation', line: 'dashed', start: 'none', end: 'open' },
+  { connector: '--|>', tint: 'application', line: 'solid', start: 'none', end: 'hollow' },
+];
+
+const accessLabels: Record<string, string> = { read: 'read', write: 'write', readWrite: 'read/write' };
+
+function connectorName(connector: string): string {
+  const definition = relationshipConnectors[connector as keyof typeof relationshipConnectors];
+  if (!definition) throw new Error(`"${connector}" is not an Archimaid connector.`);
+  const name = relationshipNames[definition.type];
+  const access = 'access' in definition ? accessLabels[definition.access] : undefined;
+  return access ? `${name}, ${access}` : name;
+}
+
+const dashArray: Record<LineStyle, string | undefined> = { solid: undefined, dotted: '1 5', dashed: '8 6' };
+const lineStart: Record<Start, number> = { none: 6, dot: 10, diamond: 24 };
+const lineEnd: Record<End, number> = { none: 214, open: 212, filled: 202, hollow: 198, small: 210 };
+
+const connectorCount = Object.keys(relationshipConnectors).length;
+const cards = showcase.map((item) => ({
+  ...item,
+  name: connectorName(item.connector),
+  x1: lineStart[item.start],
+  x2: lineEnd[item.end],
+}));
+---
+
+<section id="syntax" class="container section">
+  <div class="heading-row" data-reveal>
+    <div class="section-heading">
+      <span class="eyebrow">Syntax</span>
+      <h2>Connectors you can read.</h2>
+      <p>Dots for dotted lines, a bar and an arrow for a hollow head. Every relationship also has a long form with its own ID.</p>
+    </div>
+    <a class="all" href={project.readme}>All {connectorCount} connectors and their long forms</a>
+  </div>
+
+  <ul class="cards">
+    {
+      cards.map((card, index) => (
+        <li data-reveal style={`--reveal-delay: ${(index % 4) * 70}ms`}>
+          <div class="card-top">
+            <code style={`background: var(--${card.tint})`}>{card.connector}</code>
+            <span class="name">{card.name}</span>
+          </div>
+          <svg width="100%" height="24" viewBox="0 0 220 24" aria-hidden="true" class="notation">
+            {card.start === 'dot' && <circle cx="10" cy="12" r="5" class="ink-fill" />}
+            {card.start === 'diamond' && <path d="M 4 12 L 14 6 L 24 12 L 14 18 Z" class="ink-fill" />}
+            <path d={`M ${card.x1} 12 H ${card.x2}`} stroke-dasharray={dashArray[card.line]} class="ink-line" />
+            {card.end === 'open' && <path d="M 202 6 L 212 12 L 202 18" class="ink-line" />}
+            {card.end === 'small' && <path d="M 204 7 L 212 12 L 204 17" class="ink-line" />}
+            {card.end === 'filled' && <path d="M 200 6 L 213 12 L 200 18 Z" class="ink-fill" />}
+            {card.end === 'hollow' && <path d="M 199 5 L 213 12 L 199 19 Z" class="ink-line hollow" />}
+          </svg>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .heading-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .all {
+    font-weight: 600;
+    font-size: 16px;
+    text-underline-offset: 4px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: 16px;
+    margin: 44px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 22px;
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    background: var(--white);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  code {
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  .name {
+    font-weight: 600;
+  }
+
+  .notation .ink-line {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .notation .hollow {
+    fill: var(--white);
+  }
+
+  .notation .ink-fill {
+    fill: var(--ink);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  :global(.js) .notation {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  :global(.js) .is-revealed .notation {
+    animation: draw 0.8s ease-out calc(var(--reveal-delay, 0ms) + 250ms) both;
+  }
+
+  @keyframes draw {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .notation,
+    :global(.js) .is-revealed .notation {
+      clip-path: none;
+      animation: none;
+    }
+  }
+</style>

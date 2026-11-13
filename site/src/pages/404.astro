@@ -1,0 +1,45 @@
+---
+import ElementShape from '../components/ElementShape.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import LayerStripe from '../components/LayerStripe.astro';
+import Base from '../layouts/Base.astro';
+import { project } from '../lib/project';
+---
+
+<Base title={`Page not found · ${project.name}`} description="This page does not exist." noindex>
+  <LayerStripe />
+  <Header />
+  <main class="container not-found">
+    <ElementShape type="requirement" label="404: no such element" width={280} height={72} />
+    <h1>This page isn’t in the model.</h1>
+    <p>The link may be old, or the page was never declared. Start again from the home page.</p>
+    <a class="button" href="/" style="background: var(--application)">Back to {project.name}</a>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .not-found {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+    padding-block: 120px 40px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(36px, 5vw, 60px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    margin: 0;
+    max-width: 560px;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+</style>

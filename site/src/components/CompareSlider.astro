@@ -1,0 +1,214 @@
+---
+import CodeLines from './CodeLines.astro';
+
+interface Props {
+  fileName: string;
+  source: string;
+  svg: string;
+  description: string;
+  initialSplit?: number;
+}
+
+const { fileName, source, svg, description, initialSplit = 46 } = Astro.props;
+---
+
+<figure class="compare" style={`--split: ${initialSplit}%`} data-compare>
+  <div class="layer source">
+    <span class="tab"><span class="dot" aria-hidden="true"></span>{fileName}</span>
+    <pre class="source-code"><CodeLines source={source} lineNumbers /></pre>
+  </div>
+
+  <div class="layer rendered">
+    <span class="badge">Rendered by Archimaid</span>
+    <div class="diagram" set:html={svg} />
+  </div>
+
+  <input
+    class="range"
+    type="range"
+    min="0"
+    max="100"
+    step="0.5"
+    value={initialSplit}
+    aria-label="Compare the text source with the rendered diagram"
+  />
+  <div class="handle" aria-hidden="true">
+    <div class="knob">
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M9 7l-5 5 5 5M15 7l5 5-5 5"></path>
+      </svg>
+    </div>
+  </div>
+  <figcaption class="visually-hidden">{description}</figcaption>
+</figure>
+
+<script>
+  for (const compare of document.querySelectorAll<HTMLElement>('[data-compare]')) {
+    const range = compare.querySelector<HTMLInputElement>('input[type="range"]');
+    if (!range) throw new Error('The compare slider is missing its range input.');
+    const update = (): void => {
+      compare.style.setProperty('--split', `${range.value}%`);
+    };
+    range.addEventListener('input', update);
+    update();
+  }
+</script>
+
+<style>
+  .compare {
+    position: relative;
+    height: 640px;
+    margin: 44px 0 0;
+    border: 2px solid var(--ink);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 8px 8px 0 var(--ink);
+    background: var(--code-bg);
+  }
+
+  .layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  .source {
+    display: flex;
+    align-items: center;
+    padding: 60px 48px 36px;
+    color: var(--code-ink);
+  }
+
+  .tab {
+    position: absolute;
+    left: 20px;
+    top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #a9a9bb;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #ff92b8;
+  }
+
+  .source-code {
+    margin: 0;
+    font-size: 14px;
+    line-height: 23px;
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  .rendered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 40px 40px;
+    background-color: var(--white);
+    background-image: radial-gradient(#dcdad2 1px, transparent 1px);
+    background-size: 22px 22px;
+    clip-path: inset(0 0 0 var(--split));
+  }
+
+  .badge {
+    position: absolute;
+    right: 20px;
+    top: 14px;
+    padding: 5px 12px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--technology);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .diagram {
+    width: 100%;
+    max-width: 1060px;
+  }
+
+  .diagram :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .range {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+  }
+
+  .handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--split);
+    z-index: 4;
+    width: 3px;
+    margin-left: -1.5px;
+    background: var(--ink);
+    pointer-events: none;
+  }
+
+  .knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--business);
+    color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .range:focus-visible + .handle .knob {
+    outline: 3px solid var(--application-stroke);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .compare {
+      height: 560px;
+    }
+
+    .source {
+      padding-inline: 20px;
+    }
+
+    .source-code {
+      font-size: 11px;
+      line-height: 19px;
+    }
+
+    .rendered {
+      padding-inline: 16px;
+    }
+  }
+</style>

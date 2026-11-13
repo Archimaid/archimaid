@@ -1,0 +1,23 @@
+archimate-beta
+  layout framework
+  accTitle: Order fulfilment
+  accDescr: A customer order, from process to platform.
+
+  element requirement ship "Ship within 24h"
+  element businessActor customer "Customer"
+  element businessProcess fulfil "Fulfil order"
+  element applicationService api "Order API"
+  element applicationComponent oms "Order service"
+  element dataObject order "Order"
+  element technologyService hosting "Hosting"
+  element node cluster "Kubernetes"
+
+  relationship realization meets fulfil -> ship
+  relationship assignment performs customer -> fulfil
+  relationship serving supports api -> fulfil
+  relationship realization provides oms -> api
+  relationship access writes oms -> order access write
+  relationship serving runs hosting -> oms
+  relationship realization hosts cluster -> hosting
+
+  note sla "Measured from payment\nto dispatch" on ship

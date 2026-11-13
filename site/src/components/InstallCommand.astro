@@ -1,0 +1,113 @@
+---
+import { project } from '../lib/project';
+
+const command = `npm install ${project.packageName} mermaid`;
+---
+
+<div class="install" data-install>
+  <span class="prompt" aria-hidden="true">$</span>
+  <code>{command}</code>
+  <button type="button" class="copy" data-copy={command} aria-label="Copy install command">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="9" width="12" height="12" rx="2"></rect>
+      <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+    </svg>
+  </button>
+  <span class="status" role="status" data-copy-status></span>
+</div>
+
+<script>
+  for (const container of document.querySelectorAll<HTMLElement>('[data-install]')) {
+    const button = container.querySelector<HTMLButtonElement>('[data-copy]');
+    const status = container.querySelector<HTMLElement>('[data-copy-status]');
+    if (!button || !status) throw new Error('The install command is missing its copy button or status.');
+    const text = button.dataset.copy ?? '';
+
+    button.addEventListener('click', () => {
+      navigator.clipboard.writeText(text).then(
+        () => {
+          status.textContent = 'Copied';
+        },
+        () => {
+          status.textContent = 'Copy failed: select the command instead';
+        },
+      );
+    });
+  }
+</script>
+
+<style>
+  .install {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 48px;
+    padding: 0 6px 0 18px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+    font-size: 14px;
+  }
+
+  .prompt {
+    color: #ff92b8;
+  }
+
+  code {
+    white-space: nowrap;
+    user-select: all;
+  }
+
+  @media (max-width: 400px) {
+    .install {
+      padding-left: 14px;
+      font-size: 12px;
+    }
+
+    .copy {
+      margin-left: 2px;
+    }
+  }
+
+  .copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-left: 8px;
+    border: 0;
+    border-radius: 999px;
+    background: #2a2a36;
+    color: var(--code-ink);
+    cursor: pointer;
+  }
+
+  .copy:hover {
+    background: #3a3a4a;
+  }
+
+  .status {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 8px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+</style>

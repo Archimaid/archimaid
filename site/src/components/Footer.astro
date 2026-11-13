@@ -1,0 +1,77 @@
+---
+import { project } from '../lib/project';
+import LayerStripe from './LayerStripe.astro';
+import Logo from './Logo.astro';
+---
+
+<footer class="container footer">
+  <div class="row">
+    <div class="brand">
+      <Logo size={28} />
+      <span>{project.name}</span>
+    </div>
+    <nav aria-label="Footer">
+      <a href={project.repository}>GitHub</a>
+      <a href={project.npm}>npm</a>
+      <a href={project.reference}>Type reference</a>
+      <a href={project.changelog}>Changelog</a>
+      <a href={project.license}>MIT License</a>
+    </nav>
+  </div>
+  <LayerStripe height={4} rounded />
+  <p>
+    ArchiMate® is a registered trademark of The Open Group. {project.name} is an independent project and is not affiliated
+    with or endorsed by The Open Group. The ArchiMate specification has its own licensing terms.
+  </p>
+</footer>
+
+<style>
+  .footer {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding-block: 96px 56px;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  nav a {
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  p {
+    max-width: 820px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-faint);
+  }
+</style>
