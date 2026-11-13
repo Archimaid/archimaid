@@ -244,7 +244,7 @@ npm install mermaid /path/to/archimate-mermaid-0.1.0.tgz
 
 Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
-For contributions, check the design notes, update tests for language or rendering changes, and include a minimal diagram when reporting a problem. To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an element type. Report security issues as described in [SECURITY.md](SECURITY.md). To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
 
 ## Sources
 

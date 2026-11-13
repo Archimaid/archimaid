@@ -1,0 +1,27 @@
+name: Bug report
+description: Something parses, validates or renders incorrectly.
+labels: [bug]
+body:
+  - type: textarea
+    id: diagram
+    attributes:
+      label: Minimal diagram
+      description: The smallest archimate-beta source that shows the problem.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+      description: What you expected, what happened instead, and any error message. Attach a screenshot for rendering problems.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: archimate-mermaid, Mermaid, and the browser or Node.js version.
+      placeholder: archimate-mermaid 0.1.0, Mermaid 12.3.0, Chrome 142
+    validations:
+      required: true
