@@ -31,13 +31,13 @@ npm run render:brand
 
 ## Deploy to Cloudflare
 
-Connect the repository to Cloudflare (Workers & Pages) with these build settings:
+The site deploys as a Cloudflare Worker that serves static files. `wrangler.jsonc` in the repository root points Wrangler at `site/dist` and serves `404.html` for unknown paths. Connect the repository to a Worker named `archimaid` (the name in `wrangler.jsonc`) with these build settings:
 
 | Setting | Value |
 | --- | --- |
-| Root directory | `/` |
+| Path (root directory) | empty, the repository root |
 | Build command | `npm ci && npm run build && npm ci --prefix site && npm run build --prefix site` |
-| Output directory | `site/dist` |
+| Deploy command | `npx wrangler deploy` |
 | Environment variable | `NODE_VERSION=24` |
 
 Then add `archimaid.org` as a custom domain.

@@ -1,0 +1,10 @@
+// Cloudflare Workers deploy for archimaid.org. The site is static: build it first (see site/README.md),
+// then `npx wrangler deploy` uploads site/dist. The name must match the Worker connected in Cloudflare.
+{
+  "name": "archimaid",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site/dist",
+    "not_found_handling": "404-page",
+  },
+}
