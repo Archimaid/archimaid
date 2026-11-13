@@ -421,11 +421,7 @@ function resolveRelationship(context: ValidationContext, specification: Relation
   } else if (specification.shorthand && !labelRejected) {
     warnOnRepeatedShorthand(context, specification.shorthand, labelText);
   }
-  // Kept as released: the long form records "access unspecified" and shorthand ".." omits it.
-  // Normalising either way changes the model, so the asymmetry is decided here and nowhere else.
-  const access = specification.notation === 'shorthand' && specification.access === 'unspecified'
-    ? undefined
-    : specification.access;
+  const access = specification.access === 'unspecified' ? undefined : specification.access;
   return {
     id,
     type: specification.type,

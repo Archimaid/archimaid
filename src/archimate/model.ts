@@ -1,4 +1,4 @@
-import type { AccessMode } from './catalogue.js';
+import type { SpecifiedAccessMode } from './catalogue.js';
 
 export type ArchiMateDirection = 'TB' | 'BT' | 'LR' | 'RL';
 export type ArchiMateLayout = 'architecture' | 'framework' | 'graph';
@@ -16,7 +16,7 @@ export interface ArchiMateRelationship {
   readonly source: string;
   readonly target: string;
   readonly label?: string;
-  readonly access?: AccessMode;
+  readonly access?: SpecifiedAccessMode;
   readonly directed?: boolean;
 }
 

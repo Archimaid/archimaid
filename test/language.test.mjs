@@ -231,12 +231,16 @@ test('connector shorthand matches the long form and generates unique, stable IDs
     'manage <.. order : "Reads order record"',
     'manage <.. order',
     'relationship access reads manage -> order access read label "Reads order record"',
+    'manage .. order',
+    'relationship access touches manage -> order access unspecified',
   ].join('\n'));
 
   assert.deepEqual(model.relationships, [
     { id: 'manage__access__order_2', type: 'access', source: 'manage', target: 'order', access: 'read', label: 'Reads order record' },
     { id: 'manage__access__order_3', type: 'access', source: 'manage', target: 'order', access: 'read' },
     { id: 'reads', type: 'access', source: 'manage', target: 'order', access: 'read', label: 'Reads order record' },
+    { id: 'manage__access__order_4', type: 'access', source: 'manage', target: 'order' },
+    { id: 'touches', type: 'access', source: 'manage', target: 'order' },
   ]);
 });
 

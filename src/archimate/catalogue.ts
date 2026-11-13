@@ -181,6 +181,8 @@ export function getElementType(type: string): ElementTypeDefinition | undefined 
 }
 
 export type AccessMode = "read" | "write" | "readWrite" | "unspecified";
+// The model omits "unspecified", so a relationship carries an access mode only when one is given.
+export type SpecifiedAccessMode = Exclude<AccessMode, "unspecified">;
 export type RelationshipMarker =
   | "none"
   | "filledDiamond"

@@ -3,7 +3,7 @@ import {
   getRelationshipNotation,
   relationshipNames,
   relationshipTypes,
-  type AccessMode,
+  type SpecifiedAccessMode,
   type RelationshipType,
 } from "../../archimate/catalogue.js";
 import type { ArchiMateModel } from "../../archimate/model.js";
@@ -31,12 +31,11 @@ const accessModeWords = {
   read: "read",
   write: "write",
   readWrite: "read and write",
-  unspecified: undefined,
-} satisfies Record<AccessMode, string | undefined>;
+} satisfies Record<SpecifiedAccessMode, string>;
 
 function relationshipDescription(relationship: Relationship, names: ReadonlyMap<string, string>): string {
   const typeName = isRelationshipType(relationship.type) ? relationshipNames[relationship.type] : relationship.type;
-  const mode = relationship.type === "access" ? accessModeWords[relationship.access ?? "unspecified"] : undefined;
+  const mode = relationship.type === "access" ? relationship.access && accessModeWords[relationship.access] : undefined;
   const qualifier = mode ? ` (${mode})` : relationship.type === "association" && relationship.directed ? " (directed)" : "";
   const source = names.get(relationship.source) ?? relationship.source;
   const target = names.get(relationship.target) ?? relationship.target;
@@ -180,7 +179,7 @@ function layoutEdges(
   ]);
   for (const [index, relationship] of model.relationships.entries()) {
     if (nestingRelationships.has(relationship.id) && !relationship.label
-      && (relationship.access === undefined || relationship.access === "unspecified")) {
+      && relationship.access === undefined) {
       continue;
     }
     const source = nodeIds.get(relationship.source);
