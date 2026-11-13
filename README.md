@@ -6,7 +6,7 @@
 [![Mermaid 12.3 or later](https://img.shields.io/badge/Mermaid-%E2%89%A512.3-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
 [![ArchiMate 3.2](https://img.shields.io/badge/ArchiMate-3.2-6d44ae)](https://publications.opengroup.org/standards/archimate/c226)
 
-Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, relationship-backed nesting, and notes. The `archimate-beta` syntax is experimental.
+Write ArchiMate 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, nesting, notes, and element links. The `archimate-beta` syntax is experimental.
 
 **Automatic relationship checks against ArchiMate 3.2 Appendix B are under development.** Their release depends on permission from The Open Group to distribute the relationship lookup.
 
@@ -98,22 +98,37 @@ Use `layout graph` for a relationship-driven layout. Graph layout accepts `direc
 
 ### Nest elements and add notes
 
-Declare a relationship and give its ID to `nest child in parent via relationshipId`. Omit `via relationshipId` when exactly one relationship between the two elements supports the nesting, as with a shorthand relationship.
+Declare elements inside an element's block to draw them inside it. Blocks can be nested.
 
 ```text
 archimate-beta
-  element applicationComponent suite "Order management suite"
-  element applicationComponent billing "Billing"
-
-  relationship composition includes_billing suite -> billing
-  nest billing in suite via includes_billing
+  element applicationComponent suite "Order management suite" {
+    element applicationComponent billing "Billing"
+    element applicationComponent orders "Orders"
+  }
+  suite *-- billing
 
   note review "Confirm retry behaviour" on suite
 ```
 
-Nesting supports Composition, Aggregation, Assignment, Realization, and Access from parent to child. For Specialization, the child specializes its parent. The nesting declaration must reference a relationship between the named child and parent. Each child can have one visual parent. The enclosure represents the relationship and the renderer also draws its line when it carries a label or explicit read/write mode. [ArchiMate 3.2 specification, §§3.8, 5.1, 5.2.2, and 5.4.1](https://publications.opengroup.org/standards/archimate/c226)
+Nesting does not need a relationship. When exactly one relationship between parent and child supports nesting, as `suite *-- billing` does here, the enclosure represents that relationship and its line is not drawn. Without such a relationship, as for `orders`, the nesting only groups the child visually. With several, name the intended one: declare the child outside the block and write `nest child in parent via relationshipId`. `nest child in parent` without `via` works like a block.
+
+Nesting supports Composition, Aggregation, Assignment, Realization, and Access from parent to child. For Specialization, the child specializes its parent. Each child has one visual parent, and nesting must not form a cycle. The renderer still draws the line of a nesting relationship that carries a label or an explicit read/write mode. A block holds elements, descriptions, relationships, notes, `nest` and `click` declarations; diagram settings such as `direction` stay at the top level. [ArchiMate 3.2 specification, §§3.8, 5.1, 5.2.2, and 5.4.1](https://publications.opengroup.org/standards/archimate/c226)
 
 Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to attach it to an element's top edge (its bottom edge in `direction BT`, so relationships leaving upward stay clear of it). Notes are diagram annotations and can be endpoints of the supported relationship types. Use `\n` for a line break.
+
+### Links and tooltips
+
+Hovering an element shows its type and name, followed by its `description`. Use `click` to link an element to a page, with an optional tooltip that replaces the description and an optional target.
+
+```text
+archimate-beta
+  element applicationComponent billing "Billing"
+  description billing "Handles invoicing."
+  click billing href "https://wiki.example.com/billing" "Open the billing runbook" _blank
+```
+
+The link accepts `http`, `https` and `mailto` URLs, and relative URLs. The target is one of `_blank`, `_self`, `_parent` or `_top`. Mermaid removes the target unless `securityLevel` is `'loose'`, so with the default `'strict'` level the link opens in the same tab. Links only work where the SVG is shown inline or opened directly; GitHub Markdown and `<img>` tags do not follow them.
 
 ## Host integration
 

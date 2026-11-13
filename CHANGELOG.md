@@ -9,7 +9,9 @@ First release.
 ### Language
 
 - The `archimate-beta` diagram type with all 60 ArchiMate 3.2 element types and 11 relationship types.
-- Long-form relationships with IDs, a shorthand connector syntax, relationship-backed nesting, and standalone or attached notes.
+- Long-form relationships with IDs, a shorthand connector syntax, and standalone or attached notes.
+- Nesting through element blocks or `nest`, backed by a relationship when one supports it and visual otherwise.
+- `click` links elements to a URL with an optional tooltip and target. Hovering an element shows its description.
 - `title`, `accTitle`, `accDescr` and `accDescr { … }` metadata, and a leading YAML frontmatter block.
 - `parseArchiMate` and `validateArchiMate` in `archimate-mermaid/language`, which report every error and warning with source ranges and suggest the closest valid keyword for a misspelt type.
 

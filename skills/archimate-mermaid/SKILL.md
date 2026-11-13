@@ -13,12 +13,13 @@ archimate-beta
   accTitle: Order management
   accDescr: The order management suite contains a billing component.
 
-  element applicationComponent suite "Order management suite"
-  element applicationComponent billing "Billing"
+  element applicationComponent suite "Order management suite" {
+    element applicationComponent billing "Billing"
+  }
   description billing "Handles invoicing."
+  click billing href "https://wiki.example.com/billing" "Open the billing runbook"
 
-  relationship composition includes_billing suite -> billing
-  nest billing in suite via includes_billing
+  suite *-- billing
   note review "Confirm retry behaviour" on suite
 ```
 
@@ -102,7 +103,9 @@ Use these keys after `element`. Descriptions and relationship connectors are in 
 
 - Use `relationship <type> <id> <source> -> <target>`. The arrow in the source declares model direction. For Access, put the accessor first and choose `access read`, `access write`, `access readWrite`, or `access unspecified` after the target. Use `directed` after the target to draw a directed Association. Add `label "Text"` last.
 - Or use the shorthand `<source> <connector> <target>` with an optional `: "Text"` label: `*--` composition, `o--` aggregation, `@==>` assignment, `..|>` realization, `-->` serving, `..` / `<..` / `..>` / `<..>` access (unspecified, read, write, readWrite), `-.->` influence, `---` / `--/` association (undirected, directed), `==>` triggering, `-.=>` flow, `--|>` specialization. The left endpoint is always the model source; `manage <.. order` means manage reads order. Shorthand relationships get generated IDs, so use the long form when a declaration must reference the ID. An ID that starts a statement is never read as the `o--` glyph, so write `o o-- b`, not `o--b`. Do not repeat an identical shorthand line; the validator warns about it.
-- For `nest <child> in <parent> via <relationship-id>`, declare the relationship separately. Omit `via <relationship-id>` when exactly one relationship between the pair supports nesting. Composition, aggregation, assignment, realization, and access point from parent to child. Specialization points from child to parent. Each child has at most one visual parent, and nesting must be acyclic.
+- Nest elements by declaring them inside a block: `element <type> <id> "Name" {`, child declarations on their own lines, and `}` on its own line. Blocks can be nested and hold elements, descriptions, relationships, notes, `nest` and `click`, but not diagram settings. Nesting needs no relationship. When exactly one relationship between parent and child supports nesting, the enclosure represents it and its line is hidden; otherwise the nesting is visual only. Composition, aggregation, assignment, realization, and access point from parent to child. Specialization points from child to parent.
+- `nest <child> in <parent>` is the line form of a block. Add `via <relationship-id>` when several relationships between the pair support nesting. Each child has at most one visual parent, and nesting must be acyclic.
+- Use `click <element-id> href "<url>"` to link an element, optionally followed by a quoted tooltip and a target (`_blank`, `_self`, `_parent`, `_top`). URLs must be http, https, mailto or relative. Without a tooltip, hovering shows the element's `description`.
 - Use `note <id> "Text"` for a standalone annotation or append `on <element-id>` to attach it above a declared element (below it in `direction BT`). Notes can be either endpoint of any supported relationship type. Keep architectural meaning in the ArchiMate elements and their relationships.
 - The renderer uses the default notation for 60 element types and 11 relationship types. The current feature boundary covers direct endpoints, nested elements, and notes. Junctions, relationships used as endpoints, alternate notation, viewpoint tooling, and model exchange remain future work.
 

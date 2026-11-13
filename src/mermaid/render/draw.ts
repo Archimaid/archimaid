@@ -52,14 +52,23 @@ function drawText(
 }
 
 function drawNode(
-  graph: SVGGElement,
+  graph: SVGElement,
   { element, type, notation, label }: NodeAppearance,
   box: PositionedNode,
   compound: boolean,
   palette: PaletteColours,
 ): void {
   const { x, y, width, height } = box;
-  const group = append(graph, 'g', {
+  const { link } = element;
+  const parent = link
+    ? append(graph, 'a', {
+        class: 'archimate-link',
+        href: link.href,
+        ...(link.target && { target: link.target }),
+        ...(link.target === '_blank' && { rel: 'noopener noreferrer' }),
+      })
+    : graph;
+  const group = append(parent, 'g', {
     transform: `translate(${x} ${y})`,
     'data-archimate-element': element.id,
     'data-archimate-type': element.type,
@@ -67,7 +76,9 @@ function drawNode(
     'aria-roledescription': type.name,
     'aria-label': element.name,
   });
-  append(group, 'title').textContent = `${type.name}: ${element.name}`;
+  // Browsers show the title as the tooltip.
+  const details = link?.tooltip ?? element.description;
+  append(group, 'title').textContent = `${type.name}: ${element.name}${details ? `\n${details}` : ''}`;
   if (element.description) {
     append(group, 'desc').textContent = element.description;
   }

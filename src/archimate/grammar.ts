@@ -1,9 +1,11 @@
-import { CstParser, EOF } from 'chevrotain';
-import type { CstNode, IRecognitionException, IToken, TokenType } from 'chevrotain';
+import { CstParser, EOF, defaultParserErrorProvider } from 'chevrotain';
+import type { CstNode, IParserErrorMessageProvider, IRecognitionException, IToken, TokenType } from 'chevrotain';
 import {
   access,
   accDescrBlock,
   arrow,
+  click,
+  closeBrace,
   colon,
   connector,
   description,
@@ -11,6 +13,7 @@ import {
   direction,
   element,
   header,
+  href,
   identifier,
   inside,
   label,
@@ -20,11 +23,19 @@ import {
   newline,
   note,
   on,
+  openBrace,
   quoted,
   relationship,
   tokens,
   via,
 } from './lexer.js';
+
+// A rule's own description replaces Chevrotain's "Expecting: … but found: …" wording.
+const errorMessageProvider: IParserErrorMessageProvider = {
+  ...defaultParserErrorProvider,
+  buildNoViableAltMessage: (options) =>
+    options.customUserDescription ?? defaultParserErrorProvider.buildNoViableAltMessage(options),
+};
 
 class ArchiMateParser extends CstParser {
   readonly document = this.RULE('document', () => {
@@ -36,7 +47,7 @@ class ArchiMateParser extends CstParser {
     });
     this.CONSUME(EOF, {
       ERR_MSG:
-        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, or metadata).',
+        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, click, or metadata).',
     });
   });
 
@@ -49,9 +60,27 @@ class ArchiMateParser extends CstParser {
       { ALT: () => this.SUBRULE(this.relationshipStatement) },
       { ALT: () => this.SUBRULE(this.noteStatement) },
       { ALT: () => this.SUBRULE(this.nestingStatement) },
+      { ALT: () => this.SUBRULE(this.clickStatement) },
       { ALT: () => this.SUBRULE(this.metadataStatement) },
       { ALT: () => this.SUBRULE(this.connectorStatement) },
     ]);
+  });
+
+  // Diagram settings stay at the top level, so a block holds only model declarations.
+  private readonly blockStatement = this.RULE('blockStatement', () => {
+    this.OR({
+      DEF: [
+        { ALT: () => this.SUBRULE(this.elementStatement) },
+        { ALT: () => this.SUBRULE(this.descriptionStatement) },
+        { ALT: () => this.SUBRULE(this.relationshipStatement) },
+        { ALT: () => this.SUBRULE(this.noteStatement) },
+        { ALT: () => this.SUBRULE(this.nestingStatement) },
+        { ALT: () => this.SUBRULE(this.clickStatement) },
+        { ALT: () => this.SUBRULE(this.connectorStatement) },
+      ],
+      ERR_MSG:
+        'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, nest, or click).',
+    });
   });
 
   private readonly connectorStatement = this.RULE('connectorStatement', () => {
@@ -79,6 +108,23 @@ class ArchiMateParser extends CstParser {
     this.CONSUME(identifier, { LABEL: 'type' });
     this.CONSUME2(identifier, { LABEL: 'id' });
     this.CONSUME(quoted, { LABEL: 'name' });
+    this.OPTION(() => {
+      this.CONSUME(openBrace);
+      this.MANY(() => {
+        this.CONSUME(newline);
+        this.OPTION2(() => this.SUBRULE(this.blockStatement));
+      });
+      this.CONSUME(closeBrace, { ERR_MSG: 'Expected "}" on its own line to close the element block.' });
+    });
+  });
+
+  private readonly clickStatement = this.RULE('clickStatement', () => {
+    this.CONSUME(click);
+    this.CONSUME(identifier, { LABEL: 'id' });
+    this.CONSUME(href);
+    this.CONSUME(quoted, { LABEL: 'url' });
+    this.OPTION(() => this.CONSUME2(quoted, { LABEL: 'tooltip' }));
+    this.OPTION2(() => this.CONSUME2(identifier, { LABEL: 'target' }));
   });
 
   private readonly descriptionStatement = this.RULE('descriptionStatement', () => {
@@ -134,7 +180,7 @@ class ArchiMateParser extends CstParser {
   });
 
   constructor() {
-    super(tokens);
+    super(tokens, { errorMessageProvider });
     this.performSelfAnalysis();
   }
 }
@@ -148,6 +194,7 @@ export type Declaration =
   | { kind: 'description'; id: IToken; value: IToken }
   | { kind: 'note'; id: IToken; text: IToken; anchor?: IToken }
   | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId?: IToken }
+  | { kind: 'click'; id: IToken; url: IToken; tooltip?: IToken; target?: IToken }
   | RelationshipDeclaration
   | ConnectorDeclaration;
 
@@ -206,12 +253,36 @@ class DeclarationVisitor extends BaseVisitor {
     return { kind: 'layout', value: requiredToken(ctx, 'value') };
   }
 
-  elementStatement(ctx: Context): Declaration {
-    return {
+  // A block nests every element declared directly inside it in the enclosing element.
+  elementStatement(ctx: Context): Declaration[] {
+    const parent = requiredToken(ctx, 'id');
+    const declared: Declaration = {
       kind: 'element',
       type: requiredToken(ctx, 'type'),
-      id: requiredToken(ctx, 'id'),
+      id: parent,
       name: requiredToken(ctx, 'name'),
+    };
+    const body = (ctx.blockStatement ?? []).map((node) => {
+      if (!('children' in node)) throw new Error('Invalid ArchiMate parse tree.');
+      return [this.visit(node)].flat();
+    });
+    const nesting = body.flatMap(([first]): Declaration[] =>
+      first?.kind === 'element' ? [{ kind: 'nesting', child: first.id, parent }] : [],
+    );
+    return [declared, ...nesting, ...body.flat()];
+  }
+
+  blockStatement(ctx: Context): Declaration | Declaration[] {
+    return this.statement(ctx);
+  }
+
+  clickStatement(ctx: Context): Declaration {
+    return {
+      kind: 'click',
+      id: requiredToken(ctx, 'id'),
+      url: requiredToken(ctx, 'url'),
+      ...(ctx.tooltip && { tooltip: requiredToken(ctx, 'tooltip') }),
+      ...(ctx.target && { target: requiredToken(ctx, 'target') }),
     };
   }
 

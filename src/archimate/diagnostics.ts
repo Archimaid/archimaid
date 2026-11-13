@@ -15,7 +15,8 @@ export type ArchiMateErrorCode =
   | 'UNSUPPORTED_ENDPOINT'
   | 'INVALID_RELATIONSHIP_PROPERTY'
   | 'INVALID_NOTE_TARGET'
-  | 'INVALID_NESTING';
+  | 'INVALID_NESTING'
+  | 'INVALID_LINK';
 
 export type ArchiMateWarningCode = 'DUPLICATE_RELATIONSHIP';
 

@@ -82,3 +82,37 @@ hint --- order`,
     }
   });
 });
+
+test('a linked element is wrapped in a link and its title carries the tooltip or description', async () => {
+  const source = [
+    'archimate-beta',
+    'element applicationComponent billing "Billing"',
+    'element applicationComponent orders "Orders"',
+    'click billing href "https://example.com/billing" "Open the runbook" _blank',
+    'description orders "Takes orders."',
+  ].join('\n');
+  const rendered = await withMermaidPage((page) =>
+    page.evaluate(async (source) => {
+      const mermaid = await globalThis.archimateHost;
+      const { svg } = await mermaid.render('linked', source);
+      const container = document.createElement('div');
+      container.innerHTML = svg;
+      const title = (id) => container.querySelector(`[data-archimate-element="${id}"] > title`).textContent;
+      const link = container.querySelector('a.archimate-link');
+      return {
+        href: link?.getAttribute('href'),
+        rel: link?.getAttribute('rel'),
+        wraps: link?.querySelector('[data-archimate-element]')?.dataset.archimateElement,
+        billing: title('billing'),
+        orders: title('orders'),
+      };
+    }, source),
+  );
+  assert.deepEqual(rendered, {
+    href: 'https://example.com/billing',
+    rel: 'noopener noreferrer',
+    wraps: 'billing',
+    billing: 'Application Component: Billing\nOpen the runbook',
+    orders: 'Application Component: Orders\nTakes orders.',
+  });
+});

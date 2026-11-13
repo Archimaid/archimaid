@@ -190,7 +190,7 @@ function layoutEdges(
 ): LayoutEdges {
   const edges = new Map<string, EdgeAppearance>();
   const overlayLaneCounts = new Map<string, number>();
-  const nestingRelationships = new Set(model.nesting?.map(({ relationship }) => relationship));
+  const nestingRelationships = new Set(model.nesting?.flatMap(({ relationship }) => relationship ?? []));
   const architecture = usesArchitectureLayout(model);
   const noteHosts = new Map((model.notes ?? []).map((note) => [note.id, note.on]));
   const relationships: ElkExtendedEdge[] = [];

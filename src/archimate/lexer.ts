@@ -53,6 +53,25 @@ function matchAggregation(text: string, offset: number): RegExpExecArray | null 
   return aggregationPattern.exec(text);
 }
 
+const openBracePattern = /\{/y;
+
+// After "accDescr" a brace starts an accessible description, which has its own token and its own error message.
+function matchOpenBrace(text: string, offset: number): RegExpExecArray | null {
+  const lineStart = Math.max(text.lastIndexOf('\n', offset - 1), text.lastIndexOf('\r', offset - 1)) + 1;
+  if (/^[ \t]*accDescr[ \t]*$/.test(text.slice(lineStart, offset))) return null;
+  openBracePattern.lastIndex = offset;
+  return openBracePattern.exec(text);
+}
+
+export const openBrace = createToken({
+  name: 'OpenBrace',
+  pattern: { exec: matchOpenBrace },
+  line_breaks: false,
+  start_chars_hint: ['{'],
+  label: '"{"',
+});
+export const closeBrace = createToken({ name: 'CloseBrace', pattern: /\}/, label: '"}"' });
+
 export const accDescrBlock = createToken({
   name: 'AccDescrBlock',
   pattern: { exec: matchAccDescrBlock },
@@ -95,6 +114,8 @@ export const on = keyword('On', 'on');
 export const nest = keyword('Nest', 'nest');
 export const inside = keyword('In', 'in');
 export const via = keyword('Via', 'via');
+export const click = keyword('Click', 'click');
+export const href = keyword('Href', 'href');
 
 export interface ConnectorNotation {
   readonly type: RelationshipType;
@@ -159,6 +180,8 @@ export const tokens = [
   ...connectorTokens,
   arrow,
   colon,
+  openBrace,
+  closeBrace,
   direction,
   layout,
   element,
@@ -172,6 +195,8 @@ export const tokens = [
   nest,
   inside,
   via,
+  click,
+  href,
   identifier,
 ];
 export const lexer = new Lexer(tokens);
