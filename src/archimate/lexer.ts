@@ -114,6 +114,8 @@ export const on = keyword('On', 'on');
 export const nest = keyword('Nest', 'nest');
 export const inside = keyword('In', 'in');
 export const via = keyword('Via', 'via');
+export const click = keyword('Click', 'click');
+export const href = keyword('Href', 'href');
 
 export interface ConnectorNotation {
   readonly type: RelationshipType;
@@ -193,6 +195,8 @@ export const tokens = [
   nest,
   inside,
   via,
+  click,
+  href,
   identifier,
 ];
 export const lexer = new Lexer(tokens);

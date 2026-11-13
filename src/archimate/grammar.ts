@@ -4,6 +4,7 @@ import {
   access,
   accDescrBlock,
   arrow,
+  click,
   closeBrace,
   colon,
   connector,
@@ -12,6 +13,7 @@ import {
   direction,
   element,
   header,
+  href,
   identifier,
   inside,
   label,
@@ -45,7 +47,7 @@ class ArchiMateParser extends CstParser {
     });
     this.CONSUME(EOF, {
       ERR_MSG:
-        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, or metadata).',
+        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, click, or metadata).',
     });
   });
 
@@ -58,6 +60,7 @@ class ArchiMateParser extends CstParser {
       { ALT: () => this.SUBRULE(this.relationshipStatement) },
       { ALT: () => this.SUBRULE(this.noteStatement) },
       { ALT: () => this.SUBRULE(this.nestingStatement) },
+      { ALT: () => this.SUBRULE(this.clickStatement) },
       { ALT: () => this.SUBRULE(this.metadataStatement) },
       { ALT: () => this.SUBRULE(this.connectorStatement) },
     ]);
@@ -72,10 +75,11 @@ class ArchiMateParser extends CstParser {
         { ALT: () => this.SUBRULE(this.relationshipStatement) },
         { ALT: () => this.SUBRULE(this.noteStatement) },
         { ALT: () => this.SUBRULE(this.nestingStatement) },
+        { ALT: () => this.SUBRULE(this.clickStatement) },
         { ALT: () => this.SUBRULE(this.connectorStatement) },
       ],
       ERR_MSG:
-        'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, or nest).',
+        'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, nest, or click).',
     });
   });
 
@@ -112,6 +116,15 @@ class ArchiMateParser extends CstParser {
       });
       this.CONSUME(closeBrace, { ERR_MSG: 'Expected "}" on its own line to close the element block.' });
     });
+  });
+
+  private readonly clickStatement = this.RULE('clickStatement', () => {
+    this.CONSUME(click);
+    this.CONSUME(identifier, { LABEL: 'id' });
+    this.CONSUME(href);
+    this.CONSUME(quoted, { LABEL: 'url' });
+    this.OPTION(() => this.CONSUME2(quoted, { LABEL: 'tooltip' }));
+    this.OPTION2(() => this.CONSUME2(identifier, { LABEL: 'target' }));
   });
 
   private readonly descriptionStatement = this.RULE('descriptionStatement', () => {
@@ -181,6 +194,7 @@ export type Declaration =
   | { kind: 'description'; id: IToken; value: IToken }
   | { kind: 'note'; id: IToken; text: IToken; anchor?: IToken }
   | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId?: IToken }
+  | { kind: 'click'; id: IToken; url: IToken; tooltip?: IToken; target?: IToken }
   | RelationshipDeclaration
   | ConnectorDeclaration;
 
@@ -260,6 +274,16 @@ class DeclarationVisitor extends BaseVisitor {
 
   blockStatement(ctx: Context): Declaration | Declaration[] {
     return this.statement(ctx);
+  }
+
+  clickStatement(ctx: Context): Declaration {
+    return {
+      kind: 'click',
+      id: requiredToken(ctx, 'id'),
+      url: requiredToken(ctx, 'url'),
+      ...(ctx.tooltip && { tooltip: requiredToken(ctx, 'tooltip') }),
+      ...(ctx.target && { target: requiredToken(ctx, 'target') }),
+    };
   }
 
   descriptionStatement(ctx: Context): Declaration {

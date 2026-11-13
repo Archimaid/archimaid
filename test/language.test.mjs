@@ -740,10 +740,42 @@ test('an element block nests the elements declared in it, with or without a rela
     [
       'SYNTAX_ERROR',
       3,
-      'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, or nest).',
+      'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, nest, or click).',
     ],
   ]);
   assert.deepEqual(errors(['element grouping g "G" {', '  element businessActor a "A"', '}', 'nest a in g']), [
     ['INVALID_NESTING', 5, 'Element "a" already has a nesting parent.'],
   ]);
+});
+
+test('click attaches a link and tooltip to an element, and rejects unsafe or unknown values', () => {
+  const element = 'element applicationComponent billing "Billing"';
+  const model = parseArchiMate(
+    ['archimate-beta', element, 'click billing href "https://example.com/billing" "Runbook" _blank'].join('\n'),
+  );
+  assert.deepEqual(model.elements[0].link, {
+    href: 'https://example.com/billing',
+    tooltip: 'Runbook',
+    target: '_blank',
+  });
+  assert.deepEqual(
+    parseArchiMate(['archimate-beta', element, 'click billing href "docs/billing.md"'].join('\n')).elements[0].link,
+    {
+      href: 'docs/billing.md',
+    },
+  );
+
+  for (const [click, code, message] of [
+    [
+      'click billing href "java\\tscript:alert(1)"',
+      'INVALID_LINK',
+      'Link URL scheme "javascript:" is not allowed. Use http, https or mailto.',
+    ],
+    ['click billing href "https://example.com" _new', 'INVALID_LINK', 'Unknown link target "_new".'],
+    ['click missing href "https://example.com"', 'UNKNOWN_ELEMENT', 'Link refers to an undeclared element "missing".'],
+    ['click billing href ""', 'INVALID_TEXT', 'Link URL must not be empty.'],
+  ]) {
+    const [diagnostic] = validateArchiMate(['archimate-beta', element, click].join('\n')).diagnostics;
+    assert.deepEqual([diagnostic?.code, diagnostic?.message.replace(/ Did you mean .*$/, '')], [code, message], click);
+  }
 });

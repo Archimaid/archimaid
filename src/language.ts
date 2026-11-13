@@ -21,6 +21,8 @@ export type {
   ArchiMateDirection,
   ArchiMateElement,
   ArchiMateLayout,
+  ArchiMateLink,
+  ArchiMateLinkTarget,
   ArchiMateModel,
   ArchiMateNesting,
   ArchiMateNote,

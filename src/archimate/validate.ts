@@ -8,6 +8,8 @@ import type {
   ArchiMateDirection,
   ArchiMateElement,
   ArchiMateLayout,
+  ArchiMateLink,
+  ArchiMateLinkTarget,
   ArchiMateModel,
   ArchiMateNesting,
   ArchiMateNote,
@@ -21,11 +23,14 @@ type MetadataKey = 'title' | 'accTitle' | 'accDescription';
 type ElementDeclaration = Extract<Declaration, { kind: 'element' }>;
 type DescriptionDeclaration = Extract<Declaration, { kind: 'description' }>;
 type NoteDeclaration = Extract<Declaration, { kind: 'note' }>;
+type ClickDeclaration = Extract<Declaration, { kind: 'click' }>;
 type EntityDeclaration = ElementDeclaration | RelationshipDeclaration | NoteDeclaration;
 
 const directionKeys = ['TB', 'TD', 'BT', 'LR', 'RL'];
 const layoutKeys: readonly ArchiMateLayout[] = ['architecture', 'framework', 'graph'];
 const accessModes: readonly AccessMode[] = ['read', 'write', 'readWrite', 'unspecified'];
+const linkTargets: readonly ArchiMateLinkTarget[] = ['_blank', '_self', '_parent', '_top'];
+const linkSchemes = new Set(['http', 'https', 'mailto']);
 
 function readDirection(token: IToken, report: Report): ArchiMateDirection | undefined {
   switch (token.image) {
@@ -128,6 +133,7 @@ interface CollectedDeclarations {
   readonly settings: DiagramSettings;
   readonly entities: Map<string, EntityDeclaration>;
   readonly descriptions: Map<string, DescriptionDeclaration>;
+  readonly clicks: Map<string, ClickDeclaration>;
   readonly elements: ElementDeclaration[];
   readonly relationships: (RelationshipDeclaration | ConnectorDeclaration)[];
   readonly notes: NoteDeclaration[];
@@ -222,6 +228,7 @@ function collectDeclarations(declarations: readonly Declaration[], report: Repor
     },
     entities: new Map(),
     descriptions: new Map(),
+    clicks: new Map(),
     elements: [],
     relationships: [],
     notes: [],
@@ -252,6 +259,13 @@ function collectDeclarations(declarations: readonly Declaration[], report: Repor
       case 'nesting':
         collected.nesting.push(statement);
         break;
+      case 'click':
+        if (collected.clicks.has(statement.id.image)) {
+          report('DUPLICATE_DECLARATION', statement.id, `A link is already set for "${statement.id.image}".`);
+          break;
+        }
+        collected.clicks.set(statement.id.image, statement);
+        break;
     }
   }
   return collected;
@@ -263,6 +277,37 @@ function checkDescriptionTargets(collected: CollectedDeclarations, report: Repor
       report('UNKNOWN_ELEMENT', statement.id, 'Description refers to an undeclared element "' + id + '".');
     }
   }
+  for (const [id, statement] of collected.clicks) {
+    if (collected.entities.get(id)?.kind !== 'element') {
+      report('UNKNOWN_ELEMENT', statement.id, `Link refers to an undeclared element "${id}".`);
+    }
+  }
+}
+
+// Only web and mail links, and relative ones, so that diagram text cannot run script through a link.
+function readLink(statement: ClickDeclaration, report: Report): ArchiMateLink | undefined {
+  const href = readQuotedText(statement.url, report, { emptyMessage: 'Link URL must not be empty.' });
+  const tooltip = statement.tooltip && readQuotedText(statement.tooltip, report);
+  // Browsers ignore whitespace and control characters in a scheme, so "java\tscript:" must be caught too.
+  // eslint-disable-next-line no-control-regex -- Removes the characters a browser ignores.
+  const compact = href?.replace(/[\s\u0000-\u001F]/g, '');
+  const scheme = compact && /^([a-z][a-z\d+.-]*):/i.exec(compact)?.[1]?.toLowerCase();
+  if (scheme !== undefined && !linkSchemes.has(scheme)) {
+    report('INVALID_LINK', statement.url, `Link URL scheme "${scheme}:" is not allowed. Use http, https or mailto.`);
+    return undefined;
+  }
+  const targetImage = statement.target?.image;
+  const target = linkTargets.find((candidate) => candidate === targetImage);
+  if (statement.target && target === undefined) {
+    report(
+      'INVALID_LINK',
+      statement.target,
+      withSuggestion(`Unknown link target "${statement.target.image}".`, statement.target.image, linkTargets),
+    );
+    return undefined;
+  }
+  if (href === undefined) return undefined;
+  return { href, ...(tooltip !== undefined && { tooltip }), ...(target && { target }) };
 }
 
 function buildNotes(collected: CollectedDeclarations, report: Report): ArchiMateNote[] {
@@ -285,12 +330,15 @@ function buildElements(collected: CollectedDeclarations, report: Report): ArchiM
     const name = readQuotedText(statement.name, report, { emptyMessage: 'Element name must not be empty.' });
     const elementDescription = collected.descriptions.get(statement.id.image);
     const descriptionText = elementDescription && readQuotedText(elementDescription.value, report);
+    const click = collected.clicks.get(statement.id.image);
+    const link = click && readLink(click, report);
     if (name !== undefined) {
       elements.push({
         id: statement.id.image,
         type: statement.type.image,
         name,
         ...(descriptionText !== undefined && { description: descriptionText }),
+        ...(link && { link }),
       });
     }
   }
