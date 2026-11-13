@@ -2,7 +2,7 @@
 
 **ArchiMate® for Mermaid.** Enterprise architecture diagrams as code.
 
-[![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](package.json)
+[![npm version](https://img.shields.io/npm/v/archimaid)](https://www.npmjs.com/package/archimaid)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Node.js 22.12 or later](https://img.shields.io/badge/Node.js-%E2%89%A522.12-339933)](https://nodejs.org/)
 [![Mermaid 12.3 or later](https://img.shields.io/badge/Mermaid-%E2%89%A512.3-ff3670)](https://github.com/mermaid-js/mermaid/releases/tag/mermaid%4012.3.0)
