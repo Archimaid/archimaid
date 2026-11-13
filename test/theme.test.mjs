@@ -76,3 +76,14 @@ test('typography follows base theme variables and rejects unsafe font families',
   }
   assert.match(archimateStyles(), /font-family: var\(--mermaid-font-family, Arial, sans-serif\);\s+font-size: 14px;/u);
 });
+
+test('the base theme reports a text or line colour it replaces for legibility', () => {
+  const warnings = [];
+  const colours = resolveDiagramColours({
+    theme: 'base', themeVariables: { background: '#101020', textColor: '#333333', lineColor: '#eeeeee' },
+  }, undefined, (message) => warnings.push(message));
+  assert.equal(colours.text, '#ffffff');
+  assert.equal(colours.relationship, '#eeeeee');
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /textColor #333333/);
+});

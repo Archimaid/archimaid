@@ -112,7 +112,7 @@ test('routes aligned shapes straight and separates parallel arrowheads', () => {
     { id: 'direct', source: 'a', target: 'b' },
     { id: 'back', source: 'b', target: 'a' },
   ];
-  const routes = routeArchitecture(nodes, edges);
+  const { routes } = routeArchitecture(nodes, edges);
   assert.deepEqual(routes.get('direct'), [{ x: 60, y: 60 }, { x: 60, y: 160 }]);
   const back = routes.get('back');
   assert.equal(back.length, 2);
@@ -158,8 +158,8 @@ test('routes separate parallel edges and a self-loop between placed shapes', () 
     { id: 'reverse', source: 'b', target: 'a' },
     { id: 'loop', source: 'a', target: 'a' },
   ];
-  const result = routeArchitecture(nodes, edges);
-  assert.deepEqual(result, routeArchitecture(nodes, edges));
+  const result = routeArchitecture(nodes, edges).routes;
+  assert.deepEqual(result, routeArchitecture(nodes, edges).routes);
   assert.ok(result.get('loop').length >= 4);
   assert.notDeepEqual(result.get('first'), result.get('reverse').toReversed());
   for (const points of result.values()) {
@@ -182,7 +182,7 @@ test('falls back to a direct line and warns when a target is boxed in', () => {
     ['right', { box: { x: 300, y: 200, width: 30, height: 60 } }],
   ]);
   const warnings = [];
-  const routes = routeArchitecture(nodes, [{ id: 'boxed', source: 'source', target: 'target' }],
+  const { routes } = routeArchitecture(nodes, [{ id: 'boxed', source: 'source', target: 'target' }],
     { warn: (message) => warnings.push(message) });
   const route = routes.get('boxed');
   assert.equal(route.length, 2);
@@ -255,22 +255,43 @@ test('bundles relationships of one kind from one element and keeps other kinds a
     ['upperLeft', box(0, 0)], ['lowerLeft', box(0, 120)], ['nearLeft', box(200, 120)],
     ['above', box(400, 120)],
   ]);
-  const edge = (target, kind) => ({ id: `${kind}-${target}`, source: 'hub', target, kind, targetMarker: true });
+  const edge = (target, kind) => ({
+    id: `${kind}-${target}`, source: 'hub', target, targetMarker: true,
+    bundling: { type: kind, access: 'unspecified', directed: false },
+  });
   const edges = [edge('upperLeft', 'serving'), edge('lowerLeft', 'serving'), edge('nearLeft', 'serving'),
     edge('above', 'serving'), edge('nearLeft', 'flow')];
-  const routes = routeArchitecture(nodes, edges);
+  const { routes, bundles } = routeArchitecture(nodes, edges);
   const start = (id) => routes.get(id)[0];
   assert.deepEqual(start('serving-upperLeft'), start('serving-lowerLeft'));
   assert.deepEqual(start('serving-upperLeft'), start('serving-nearLeft'));
   assert.equal(start('serving-upperLeft').x, 400, 'the left bundle leaves the left side');
   assert.equal(start('serving-above').y, 300, 'the element straight above gets its own anchor on the top side');
   assert.notDeepEqual(start('flow-nearLeft'), start('serving-nearLeft'), 'another kind gets another anchor');
-  const left = routes.bundles.get('serving-upperLeft');
-  assert.deepEqual(routes.bundles.get('serving-lowerLeft'), left);
+  const left = bundles.get('serving-upperLeft');
+  assert.deepEqual(bundles.get('serving-lowerLeft'), left);
   assert.equal(left.sharedEnd, 'start');
-  assert.equal(routes.bundles.has('flow-nearLeft'), false);
+  assert.equal(bundles.has('flow-nearLeft'), false);
   const [first, second] = [routes.get('serving-upperLeft'), routes.get('serving-lowerLeft')];
   assert.deepEqual(first.slice(0, 2).map(({ y }) => y), second.slice(0, 2).map(({ y }) => y), 'members share a trunk');
-  const plain = routeArchitecture(nodes, edges.map(({ kind, ...rest }) => rest));
+  const plain = routeArchitecture(nodes, edges.map(({ bundling, ...rest }) => rest));
   assert.equal(plain.bundles.size, 0, 'relationships without a kind are never bundled');
+});
+
+test('warns when a self-relationship cannot keep clear of other shapes', () => {
+  const nodes = new Map([
+    ['a', { box: { x: 100, y: 100, width: 124, height: 54 } }],
+    ['left', { box: { x: 60, y: 0, width: 30, height: 300 } }],
+    ['right', { box: { x: 234, y: 0, width: 30, height: 300 } }],
+  ]);
+  const warnings = [];
+  const { routes } = routeArchitecture(nodes, [{ id: 'loop', source: 'a', target: 'a' }],
+    { warn: (message) => warnings.push(message) });
+  assert.ok(routes.get('loop').length >= 4);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /"loop"/);
+  const open = new Map([['a', nodes.get('a')]]);
+  const quiet = [];
+  routeArchitecture(open, [{ id: 'loop', source: 'a', target: 'a' }], { warn: (message) => quiet.push(message) });
+  assert.deepEqual(quiet, []);
 });

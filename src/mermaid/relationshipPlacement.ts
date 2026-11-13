@@ -1,4 +1,5 @@
 import type { Arrangement, LayoutRelationship, PlacedNode, SizedNode } from "./architectureLayout.js";
+import { required } from "./invariant.js";
 
 interface Endpoint {
   owner: SizedNode;
@@ -179,8 +180,7 @@ function wrapRank(rank: Rank, ordered: readonly PlacedNode[], gap: number, maxWi
   let row: SizedNode[] = [];
   let used = 0;
   for (const node of ordered) {
-    const owner = owners.get(node);
-    if (!owner) continue;
+    const owner = required(owners.get(node), "the ranked node of a wrapped row");
     const size = node.width + gap;
     if (row.length && (used + size > share + size / 2 || used + node.width > maxWidth)) {
       rows.push(row);

@@ -147,7 +147,9 @@ function declaredDarkMode(variables: unknown): boolean | undefined {
 
 // Mermaid only supports customising theme variables on its base theme. The named themes keep the
 // ArchiMate presets, so their diagrams look the same as before theme variables were read.
-export function resolveDiagramColours(config?: MermaidConfig, resolve?: ColourResolver): DiagramColours {
+export function resolveDiagramColours(
+  config?: MermaidConfig, resolve?: ColourResolver, warn?: (message: string) => void,
+): DiagramColours {
   const variables: unknown = config?.themeVariables;
   const declared = declaredDarkMode(variables);
   const background = variable(variables, "background");
@@ -158,14 +160,18 @@ export function resolveDiagramColours(config?: MermaidConfig, resolve?: ColourRe
   const preset = dark ? darkColours : lightColours;
   if (config?.theme !== "base" || background === undefined || !opaque) return preset;
   // The base theme derives textColor from primaryColor, so it can match a custom dark background.
-  const legible = (colour: string | undefined) => {
-    const ink = colour === undefined ? undefined : parseColour(colour, resolve);
-    return ink && ink[3] > 0 && isDark(ink) !== dark ? colour : undefined;
+  const legible = (name: string, fallback: string): string => {
+    const colour = variable(variables, name);
+    if (colour === undefined) return fallback;
+    const ink = parseColour(colour, resolve);
+    if (ink && ink[3] > 0 && isDark(ink) !== dark) return colour;
+    warn?.(`ArchiMate replaced the theme ${name} ${colour}, which is not readable on ${background}, with ${fallback}.`);
+    return fallback;
   };
   return {
     canvas: background,
-    text: legible(variable(variables, "textColor")) ?? preset.text,
-    relationship: legible(variable(variables, "lineColor")) ?? preset.relationship,
+    text: legible("textColor", preset.text),
+    relationship: legible("lineColor", preset.relationship),
     ...(dark ? { relationshipOutline: background } : {}),
   };
 }
