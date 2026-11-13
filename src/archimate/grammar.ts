@@ -1,8 +1,29 @@
 import { CstParser, EOF } from 'chevrotain';
 import type { CstNode, IRecognitionException, IToken, TokenType } from 'chevrotain';
 import {
-  access, accDescrBlock, arrow, colon, connector, description, directed, direction, element, header, identifier,
-  inside, label, layout, metadata, nest, newline, note, on, quoted, relationship, tokens, via,
+  access,
+  accDescrBlock,
+  arrow,
+  colon,
+  connector,
+  description,
+  directed,
+  direction,
+  element,
+  header,
+  identifier,
+  inside,
+  label,
+  layout,
+  metadata,
+  nest,
+  newline,
+  note,
+  on,
+  quoted,
+  relationship,
+  tokens,
+  via,
 } from './lexer.js';
 
 class ArchiMateParser extends CstParser {
@@ -14,7 +35,8 @@ class ArchiMateParser extends CstParser {
       this.OPTION(() => this.SUBRULE(this.statement));
     });
     this.CONSUME(EOF, {
-      ERR_MSG: 'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, or metadata).',
+      ERR_MSG:
+        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, or metadata).',
     });
   });
 
@@ -245,9 +267,7 @@ class DeclarationVisitor extends BaseVisitor {
 
 const visitor = new DeclarationVisitor();
 
-export type GrammarResult =
-  | { readonly declarations: Declaration[] }
-  | { readonly syntaxError: IRecognitionException };
+export type GrammarResult = { readonly declarations: Declaration[] } | { readonly syntaxError: IRecognitionException };
 
 export function parseDeclarations(input: IToken[]): GrammarResult {
   parser.input = input;

@@ -1,19 +1,15 @@
-import type { ElkExtendedEdge, ElkPoint } from "elkjs/lib/elk.bundled.js";
-import { simplify } from "../geometry.js";
-import { cornerRadius, layoutPadding, noteFold, noteInset, type EdgeEndpoint, type PositionedNode } from "./shared.js";
+import type { ElkExtendedEdge, ElkPoint } from 'elkjs/lib/elk.bundled.js';
+import { simplify } from '../geometry.js';
+import { cornerRadius, layoutPadding, noteFold, noteInset, type EdgeEndpoint, type PositionedNode } from './shared.js';
 
-export function clipCorner(
-  point: ElkPoint,
-  adjacent: ElkPoint,
-  { box, outline }: EdgeEndpoint,
-): ElkPoint {
+export function clipCorner(point: ElkPoint, adjacent: ElkPoint, { box, outline }: EdgeEndpoint): ElkPoint {
   const horizontal = Math.abs(point.x - adjacent.x) > Math.abs(point.y - adjacent.y);
-  if (outline === "note") {
+  if (outline === 'note') {
     const cornerDistance = box.x + box.width - point.x + point.y - box.y;
     const inset = Math.max(0, noteFold - cornerDistance);
     return horizontal ? { x: point.x - inset, y: point.y } : { x: point.x, y: point.y + inset };
   }
-  if (outline !== "rounded" && outline !== "chamfered") {
+  if (outline !== 'rounded' && outline !== 'chamfered') {
     return point;
   }
 
@@ -21,9 +17,7 @@ export function clipCorner(
     ? Math.min(point.y - box.y, box.y + box.height - point.y)
     : Math.min(point.x - box.x, box.x + box.width - point.x);
   const delta = Math.max(0, cornerRadius - Math.max(0, distance));
-  const inset = outline === "rounded"
-    ? cornerRadius - Math.sqrt(cornerRadius ** 2 - delta ** 2)
-    : delta;
+  const inset = outline === 'rounded' ? cornerRadius - Math.sqrt(cornerRadius ** 2 - delta ** 2) : delta;
   return horizontal
     ? { x: point.x + Math.sign(point.x - adjacent.x) * inset, y: point.y }
     : { x: point.x, y: point.y + Math.sign(point.y - adjacent.y) * inset };
@@ -48,7 +42,7 @@ function attachedNoteRoute(path: readonly ElkPoint[], note: PositionedNode, host
   const hostRight = host.x + host.width;
   const hostBottom = host.y + host.height;
 
-  if (start.x === next.x && (next.y < start.y) === bandAbove) {
+  if (start.x === next.x && next.y < start.y === bandAbove) {
     // The route leaves through the band, so it can leave the note's outer edge directly.
     const x = Math.min(Math.max(start.x, note.x + 2), right - (bandAbove ? noteFold : 0) - 2);
     const exit = { x, y: bandAbove ? note.y : note.y + note.height };
@@ -79,19 +73,23 @@ function attachedNoteRoute(path: readonly ElkPoint[], note: PositionedNode, host
 
 // Unlike the router's strict crosses(), the 0.5 px inset lets segments that only graze an outline pass.
 function entersBox(start: ElkPoint, end: ElkPoint, box: PositionedNode): boolean {
-  return Math.min(start.x, end.x) < box.x + box.width - 0.5 && Math.max(start.x, end.x) > box.x + 0.5
-    && Math.min(start.y, end.y) < box.y + box.height - 0.5 && Math.max(start.y, end.y) > box.y + 0.5;
+  return (
+    Math.min(start.x, end.x) < box.x + box.width - 0.5 &&
+    Math.max(start.x, end.x) > box.x + 0.5 &&
+    Math.min(start.y, end.y) < box.y + box.height - 0.5 &&
+    Math.max(start.y, end.y) > box.y + 0.5
+  );
 }
 
-function slideAlongSide(box: PositionedNode, point: ElkPoint, axis: "x" | "y", value: number): ElkPoint | undefined {
-  const across = axis === "x" ? "y" : "x";
+function slideAlongSide(box: PositionedNode, point: ElkPoint, axis: 'x' | 'y', value: number): ElkPoint | undefined {
+  const across = axis === 'x' ? 'y' : 'x';
   const low = box[across];
-  const high = box[across] + (axis === "x" ? box.height : box.width);
+  const high = box[across] + (axis === 'x' ? box.height : box.width);
   const sideValue = Math.abs(point[across] - low) <= Math.abs(point[across] - high) ? low : high;
   const start = box[axis] + cornerRadius;
-  const end = box[axis] + (axis === "x" ? box.width : box.height) - cornerRadius;
+  const end = box[axis] + (axis === 'x' ? box.width : box.height) - cornerRadius;
   if (value < start || value > end) return undefined;
-  return axis === "x" ? { x: value, y: sideValue } : { x: sideValue, y: value };
+  return axis === 'x' ? { x: value, y: sideValue } : { x: sideValue, y: value };
 }
 
 // ELK does not see attached notes and compound titles, so move segments that cross them sideways.
@@ -110,10 +108,11 @@ export function clearDecorations(
     if (!start || !end || (start.x !== end.x && start.y !== end.y)) continue;
     const obstacle = obstacles.find((box) => entersBox(start, end, box));
     if (!obstacle) continue;
-    const axis = start.x === end.x ? "x" : "y";
-    const size = axis === "x" ? obstacle.width : obstacle.height;
-    const values = [obstacle[axis] - clearance, obstacle[axis] + size + clearance]
-      .sort((a, b) => Math.abs(a - start[axis]) - Math.abs(b - start[axis]));
+    const axis = start.x === end.x ? 'x' : 'y';
+    const size = axis === 'x' ? obstacle.width : obstacle.height;
+    const values = [obstacle[axis] - clearance, obstacle[axis] + size + clearance].sort(
+      (a, b) => Math.abs(a - start[axis]) - Math.abs(b - start[axis]),
+    );
     for (const value of values) {
       const moved = path.map((point) => ({ ...point }));
       const startsRoute = index === 0;
@@ -176,8 +175,8 @@ export function routePoints(route: ElkExtendedEdge, source: EdgeEndpoint, target
     section = nextSection;
   }
 
-  const routePath = points.filter((point, index) =>
-    index === 0 || point.x !== points[index - 1]?.x || point.y !== points[index - 1]?.y,
+  const routePath = points.filter(
+    (point, index) => index === 0 || point.x !== points[index - 1]?.x || point.y !== points[index - 1]?.y,
   );
   const start = routePath[0];
   const next = routePath[1];
@@ -203,19 +202,33 @@ function alignFirstSegment(path: readonly ElkPoint[]): ElkPoint[] {
   if (after && next.x === after.x) return simplify([start, { x: next.x, y: start.y }, after, ...rest]);
   if (after && next.y === after.y) return simplify([start, { x: start.x, y: next.y }, after, ...rest]);
   const middle = (start.x + next.x) / 2;
-  return simplify([start, { x: middle, y: start.y }, { x: middle, y: next.y }, next, ...(after ? [after] : []), ...rest]);
+  return simplify([
+    start,
+    { x: middle, y: start.y },
+    { x: middle, y: next.y },
+    next,
+    ...(after ? [after] : []),
+    ...rest,
+  ]);
 }
 
-export function overlayRoute(source: EdgeEndpoint, target: EdgeEndpoint, host: PositionedNode, lane: number): ElkPoint[] {
+export function overlayRoute(
+  source: EdgeEndpoint,
+  target: EdgeEndpoint,
+  host: PositionedNode,
+  lane: number,
+): ElkPoint[] {
   const hostRight = host.x + host.width;
   // Attached notes end before the host's right edge. Put the channel in the layout padding.
-  const channel = hostRight + noteInset + (layoutPadding - noteInset) * lane / 2;
+  const channel = hostRight + noteInset + ((layoutPadding - noteInset) * lane) / 2;
   const port = ({ box, overlayHost }: EdgeEndpoint): ElkPoint => ({
     x: box.x + box.width,
     y: overlayHost
       ? box.y + box.height * (0.4 + 0.2 * lane)
-      : Math.min(Math.max(host.y + cornerRadius + noteInset * lane, box.y + cornerRadius),
-        box.y + box.height - cornerRadius),
+      : Math.min(
+          Math.max(host.y + cornerRadius + noteInset * lane, box.y + cornerRadius),
+          box.y + box.height - cornerRadius,
+        ),
   });
   const start = port(source);
   const end = port(target);

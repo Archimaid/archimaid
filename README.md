@@ -229,6 +229,7 @@ Junctions, relationship-to-relationship endpoints, alternative element figures, 
 
 ```sh
 npm ci
+npm run lint
 npm test
 npx playwright install chromium
 npm run test:browser
@@ -243,13 +244,12 @@ npm install mermaid /path/to/archimate-mermaid-0.1.0.tgz
 
 Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
-For contributions, check the design notes, update tests for language or rendering changes, and include a minimal diagram when reporting a problem. To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an element type. Report security issues as described in [SECURITY.md](SECURITY.md). To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimate-mermaid/SKILL.md)
 
 ## Sources
 
 - The Open Group's ArchiMate 3.2 specification defines the element and relationship types. [Specification C226](https://publications.opengroup.org/standards/archimate/c226)
 - The Open Group's reference cards illustrate element figures and relationship notation. [Reference cards N221](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf)
-- The catalogue records the Archi 3.2 reference fills. The renderer defines its display palette separately. [Archi palette](https://www.archimatetool.com/downloads/colour-schemes/ArchiMate%20Standard%20-%203.2.prefs)
 - Mermaid provides the external diagram API, and ELK provides the graph layout. [Mermaid diagram guide](https://mermaid.js.org/community/new-diagram.html) · [ELK](https://eclipse.dev/elk/)
 
 The plugin code is licensed under the [MIT License](LICENSE). The ArchiMate specification has [separate licensing terms](https://www.opengroup.co.za/standards). ArchiMate® is a registered trademark of The Open Group.

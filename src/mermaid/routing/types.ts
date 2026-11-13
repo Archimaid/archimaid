@@ -1,5 +1,5 @@
-import type { Box, Point } from "../architectureLayout.js";
-import { ancestors } from "../hierarchy.js";
+import type { Box, Point } from '../architectureLayout.js';
+import { ancestors } from '../hierarchy.js';
 
 export interface RoutingNode {
   readonly box: Box;
@@ -24,12 +24,16 @@ export interface BundleKind {
   readonly directed: boolean;
 }
 
-export function bundleKind({ type, access, directed }: {
+export function bundleKind({
+  type,
+  access,
+  directed,
+}: {
   readonly type: string;
   readonly access?: string | undefined;
   readonly directed?: boolean | undefined;
 }): BundleKind {
-  return { type, access: access ?? "unspecified", directed: directed ?? false };
+  return { type, access: access ?? 'unspecified', directed: directed ?? false };
 }
 
 export interface RoutingOptions {
@@ -39,7 +43,7 @@ export interface RoutingOptions {
 export interface RouteBundle {
   readonly id: string;
   // Members of a bundle coincide from the end they share: their start, or their end.
-  readonly sharedEnd: "start" | "end";
+  readonly sharedEnd: 'start' | 'end';
 }
 
 export interface ArchitectureRoutes {

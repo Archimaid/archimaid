@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 const nested = `archimate-beta
 direction LR
@@ -15,45 +15,49 @@ relationship flow handoff orders -> billing label "Send order"
 note review "Confirm retry behaviour" on suite`;
 
 function paints(page, id, source) {
-  return page.evaluate(async ({ id, source }) => {
-    const mermaid = await globalThis.archimateHost;
-    const { svg: markup } = await mermaid.render(id, source);
-    const container = document.createElement('div');
-    container.innerHTML = markup;
-    document.body.append(container);
-    try {
-      const svg = container.querySelector('svg');
-      const style = (selector) => getComputedStyle(svg.querySelector(selector));
-      const markerPaint = (edge) => {
-        const markerEnd = svg.querySelector(`[data-archimate-relationship="${edge}"]`).getAttribute('marker-end');
-        const markerId = markerEnd.match(/#([^)]*)\)/)[1];
-        return Array.from(svg.querySelectorAll(`marker#${CSS.escape(markerId)} path`), (path) => {
-          const { fill, stroke } = getComputedStyle(path);
-          return { fill, stroke };
-        });
-      };
-      const label = svg.querySelector('.archimate-edge-label');
-      return {
-        canvas: svg.querySelector(':scope > rect[aria-hidden="true"]') ? style(':scope > rect[aria-hidden="true"]').fill
-          : null,
-        fontSize: style('[data-archimate-element="suite"] text').fontSize,
-        title: style('.archimate-title').fill,
-        element: style('[data-archimate-element="suite"] .archimate-outline').fill,
-        note: style('[data-archimate-note="review"] .archimate-note-outline').fill,
-        noteText: style('[data-archimate-note="review"] text').fill,
-        edge: style('[data-archimate-relationship="handoff"]').stroke,
-        filledMarker: markerPaint('handoff'),
-        hollowMarker: markerPaint('realizes'),
-        label: {
-          text: label.textContent,
-          ink: getComputedStyle(label).fill,
-          backing: getComputedStyle(label.previousElementSibling).fill,
-        },
-      };
-    } finally {
-      container.remove();
-    }
-  }, { id, source });
+  return page.evaluate(
+    async ({ id, source }) => {
+      const mermaid = await globalThis.archimateHost;
+      const { svg: markup } = await mermaid.render(id, source);
+      const container = document.createElement('div');
+      container.innerHTML = markup;
+      document.body.append(container);
+      try {
+        const svg = container.querySelector('svg');
+        const style = (selector) => getComputedStyle(svg.querySelector(selector));
+        const markerPaint = (edge) => {
+          const markerEnd = svg.querySelector(`[data-archimate-relationship="${edge}"]`).getAttribute('marker-end');
+          const markerId = markerEnd.match(/#([^)]*)\)/)[1];
+          return Array.from(svg.querySelectorAll(`marker#${CSS.escape(markerId)} path`), (path) => {
+            const { fill, stroke } = getComputedStyle(path);
+            return { fill, stroke };
+          });
+        };
+        const label = svg.querySelector('.archimate-edge-label');
+        return {
+          canvas: svg.querySelector(':scope > rect[aria-hidden="true"]')
+            ? style(':scope > rect[aria-hidden="true"]').fill
+            : null,
+          fontSize: style('[data-archimate-element="suite"] text').fontSize,
+          title: style('.archimate-title').fill,
+          element: style('[data-archimate-element="suite"] .archimate-outline').fill,
+          note: style('[data-archimate-note="review"] .archimate-note-outline').fill,
+          noteText: style('[data-archimate-note="review"] text').fill,
+          edge: style('[data-archimate-relationship="handoff"]').stroke,
+          filledMarker: markerPaint('handoff'),
+          hollowMarker: markerPaint('realizes'),
+          label: {
+            text: label.textContent,
+            ink: getComputedStyle(label).fill,
+            backing: getComputedStyle(label.previousElementSibling).fill,
+          },
+        };
+      } finally {
+        container.remove();
+      }
+    },
+    { id, source },
+  );
 }
 
 test('the Mermaid dark theme changes diagram paint and keeps ArchiMate element and note colours', async () => {
@@ -98,13 +102,18 @@ test('the base theme takes colours and font size from theme variables', async ()
 title: Order fulfilment
 element applicationService service "Order service"
 relationship realization realizes billing -> service`;
-  const based = (variables) => `---\nconfig:\n  theme: base\n  themeVariables:\n${
-    Object.entries(variables).map(([key, value]) => `    ${key}: '${value}'`).join('\n')}\n---\n${source}`;
+  const based = (variables) =>
+    `---\nconfig:\n  theme: base\n  themeVariables:\n${Object.entries(variables)
+      .map(([key, value]) => `    ${key}: '${value}'`)
+      .join('\n')}\n---\n${source}`;
   const luminance = (rgb) => {
-    const [red, green, blue] = rgb.match(/\d+/g).map(Number).map((value) => {
-      const channel = value / 255;
-      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-    });
+    const [red, green, blue] = rgb
+      .match(/\d+/g)
+      .map(Number)
+      .map((value) => {
+        const channel = value / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
   };
   await withMermaidPage(async (page) => {
@@ -115,14 +124,24 @@ relationship realization realizes billing -> service`;
     assert.equal(dark.label.backing, 'rgb(30, 30, 46)');
     assert.ok(luminance(dark.label.ink) > 0.5, `label ink ${dark.label.ink} is not light`);
 
-    const declared = await paints(page, 'base-declared', based({
-      background: '#2a2a2a', lineColor: '#ff8080', textColor: '#80ff80', fontSize: '18px',
-    }));
+    const declared = await paints(
+      page,
+      'base-declared',
+      based({
+        background: '#2a2a2a',
+        lineColor: '#ff8080',
+        textColor: '#80ff80',
+        fontSize: '18px',
+      }),
+    );
     assert.equal(declared.edge, 'rgb(255, 128, 128)');
     assert.equal(declared.label.ink, 'rgb(128, 255, 128)');
     assert.equal(declared.fontSize, '18px');
-    const flagged = await paints(page, 'base-flagged', based({ background: '#808080' }).replace(
-      '    background:', '    darkMode: true\n    background:'));
+    const flagged = await paints(
+      page,
+      'base-flagged',
+      based({ background: '#808080' }).replace('    background:', '    darkMode: true\n    background:'),
+    );
     assert.equal(flagged.canvas, 'rgb(128, 128, 128)');
     assert.ok(flagged.hollowMarker.length === 2, 'dark mode draws marker outlines');
 
@@ -138,7 +157,8 @@ test('base theme backgrounds in named, alpha and transparent forms keep lines an
 title: Order fulfilment
 element applicationService service "Order service"
 relationship realization realizes billing -> service`;
-  const based = (background) => `---\nconfig:\n  theme: base\n  themeVariables:\n    background: '${background}'\n---\n${source}`;
+  const based = (background) =>
+    `---\nconfig:\n  theme: base\n  themeVariables:\n    background: '${background}'\n---\n${source}`;
   const parse = (colour) => {
     const [red = 0, green = 0, blue = 0, alpha = 1] = (colour.match(/[\d.]+/g) ?? [0, 0, 0, 0]).map(Number);
     return { red, green, blue, alpha };
@@ -157,24 +177,39 @@ relationship realization realizes billing -> service`;
   };
   await withMermaidPage(async (page) => {
     for (const [background, canvas] of [
-      ['navy', 'rgb(0, 0, 128)'], ['#1e1e2eff', 'rgb(30, 30, 46)'], ['transparent', 'rgb(255, 255, 255)'],
+      ['navy', 'rgb(0, 0, 128)'],
+      ['#1e1e2eff', 'rgb(30, 30, 46)'],
+      ['transparent', 'rgb(255, 255, 255)'],
     ]) {
       const paint = await paints(page, `base-${background.replace(/\W/g, '')}`, based(background));
       assert.equal(paint.canvas, canvas, background);
       assert.ok(contrast(paint.edge, paint.canvas) >= 4.5, `${background}: line ${paint.edge} on ${paint.canvas}`);
       assert.equal(parse(paint.label.backing).alpha, 1, `${background}: label backing ${paint.label.backing}`);
-      assert.ok(contrast(paint.label.ink, paint.label.backing) >= 4.5,
-        `${background}: label ${paint.label.ink} on ${paint.label.backing}`);
-      assert.ok(paint.hollowMarker.some(({ fill }) => parse(fill).alpha === 1), `${background}: hollow marker fill`);
+      assert.ok(
+        contrast(paint.label.ink, paint.label.backing) >= 4.5,
+        `${background}: label ${paint.label.ink} on ${paint.label.backing}`,
+      );
+      assert.ok(
+        paint.hollowMarker.some(({ fill }) => parse(fill).alpha === 1),
+        `${background}: hollow marker fill`,
+      );
     }
   });
 });
 
 test('a transparent background omits the canvas and keeps label backings', async () => {
-  const transparent = await withMermaidPage((page) => paints(page, 'transparent', `${nested}
+  const transparent = await withMermaidPage(
+    (page) =>
+      paints(
+        page,
+        'transparent',
+        `${nested}
 title: Order fulfilment
 element applicationService service "Order service"
-relationship realization realizes billing -> service`), { background: 'transparent' });
+relationship realization realizes billing -> service`,
+      ),
+    { background: 'transparent' },
+  );
   assert.equal(transparent.canvas, null);
   assert.equal(transparent.label.backing, 'rgb(255, 255, 255)');
   assert.equal(transparent.edge, 'rgb(0, 0, 0)');
@@ -210,8 +245,13 @@ function viewport(page) {
         naturalWidth: svg.viewBox.baseVal.width,
         naturalHeight: svg.viewBox.baseVal.height,
         renderedWidth: svg.getBoundingClientRect().width,
-        gaps: [orders.left - suite.left, orders.top - suite.top, billing.left - orders.right,
-          suite.right - billing.right, suite.bottom - billing.bottom],
+        gaps: [
+          orders.left - suite.left,
+          orders.top - suite.top,
+          billing.left - orders.right,
+          suite.right - billing.right,
+          suite.bottom - billing.bottom,
+        ],
       };
     } finally {
       container.remove();

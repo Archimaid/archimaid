@@ -1,23 +1,29 @@
-import type { ExternalDiagramDefinition, MermaidConfig } from "mermaid";
-import type { ArchiMateModel } from "../archimate/model.js";
-import { parseArchiMate } from "../archimate/parser.js";
-import type { ArchiMatePluginOptions } from "./archimateDetector.js";
-import { renderArchiMate } from "./archimateRenderer.js";
-import { archimatePalettes, archimateStyles } from "./styles.js";
+import type { ExternalDiagramDefinition, MermaidConfig } from 'mermaid';
+import type { ArchiMateModel } from '../archimate/model.js';
+import { parseArchiMate } from '../archimate/parser.js';
+import type { ArchiMatePluginOptions } from './archimateDetector.js';
+import { renderArchiMate } from './archimateRenderer.js';
+import { archimatePalettes, archimateStyles } from './styles.js';
 
-type DiagramDefinition = Awaited<ReturnType<ExternalDiagramDefinition["loader"]>>["diagram"];
+type DiagramDefinition = Awaited<ReturnType<ExternalDiagramDefinition['loader']>>['diagram'];
 
 // The markers Mermaid wraps around the name or number of a #name; or #123; sequence.
 const mermaidEntityMarker = /ﬂ°°?(\w+)¶ß/gu;
 
 export interface ArchiMateLogger {
-  warn(message: string): void;
+  readonly warn: (message: string) => void;
 }
 
 export function toLogger(log: unknown): ArchiMateLogger | undefined {
-  if (typeof log !== "object" || log === null || !("warn" in log)) return undefined;
+  if (typeof log !== 'object' || log === null || !('warn' in log)) return undefined;
   const { warn } = log;
-  return typeof warn === "function" ? { warn: (message) => warn.call(log, message) } : undefined;
+  return typeof warn === 'function'
+    ? {
+        warn: (message) => {
+          warn.call(log, message);
+        },
+      }
+    : undefined;
 }
 
 export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>): DiagramDefinition {
@@ -45,13 +51,13 @@ export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>
         diagramTitle = title;
       },
       getDiagramTitle() {
-        return model?.title ?? diagramTitle ?? "";
+        return model?.title ?? diagramTitle ?? '';
       },
       getAccTitle() {
-        return model?.accTitle ?? model?.title ?? diagramTitle ?? "";
+        return model?.accTitle ?? model?.title ?? diagramTitle ?? '';
       },
       getAccDescription() {
-        return model?.accDescription ?? "";
+        return model?.accDescription ?? '';
       },
     },
     parser: {
@@ -59,17 +65,17 @@ export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>
         model = undefined;
         // Mermaid encodes #name; and #123; before dispatch. Quoted ArchiMate
         // text treats these sequences literally, so restore them before parsing.
-        const literalSource = source.replace(mermaidEntityMarker, "#$1;");
+        const literalSource = source.replace(mermaidEntityMarker, '#$1;');
         model = parseArchiMate(literalSource, { lineOffset: frontmatterLineOffset });
       },
     },
     renderer: {
       async draw(_text, id, _version, diagram) {
         if (!model) {
-          throw new Error("Parse an ArchiMate diagram before rendering it.");
+          throw new Error('Parse an ArchiMate diagram before rendering it.');
         }
 
-        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? "", options, getConfig?.(), logger);
+        await renderArchiMate(model, id, diagram.db.getDiagramTitle?.() ?? '', options, getConfig?.(), logger);
       },
     },
     styles: archimateStyles,

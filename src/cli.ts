@@ -3,7 +3,14 @@
 import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { formatReport, outputFormats, type CheckedFile, type FileDiagnostic, type OutputFormat, type ReportOutput } from './cli/report.js';
+import {
+  formatReport,
+  outputFormats,
+  type CheckedFile,
+  type FileDiagnostic,
+  type OutputFormat,
+  type ReportOutput,
+} from './cli/report.js';
 import { collectSources, stdinName } from './cli/sources.js';
 import { validateArchiMate } from './language.js';
 import type { ArchiMateBackground } from './index.js';
@@ -72,7 +79,9 @@ async function render(
   const name = input === '-' ? stdinName : input;
   const source = input === '-' ? readFileSync(0, 'utf8') : await readFile(input, 'utf8');
   const { diagnostics } = validateArchiMate(source);
-  write(formatReport({ files: [], diagnostics: diagnostics.map((diagnostic) => ({ ...diagnostic, file: name })) }, 'text'));
+  write(
+    formatReport({ files: [], diagnostics: diagnostics.map((diagnostic) => ({ ...diagnostic, file: name })) }, 'text'),
+  );
   if (diagnostics.some(({ severity }) => severity === 'error')) return 1;
   try {
     const svg = await renderSvg(source, { theme: oneOf('theme', theme, mermaidThemes), background });
@@ -105,7 +114,9 @@ async function main(args: readonly string[]): Promise<number> {
     return 0;
   }
   if (values.version) {
-    const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
+    const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
     console.log(version);
     return 0;
   }
@@ -128,7 +139,10 @@ try {
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
-  if (error instanceof UsageError || (error instanceof Error && 'code' in error && String(error.code).startsWith('ERR_PARSE_ARGS'))) {
+  if (
+    error instanceof UsageError ||
+    (error instanceof Error && 'code' in error && String(error.code).startsWith('ERR_PARSE_ARGS'))
+  ) {
     console.error(usage);
     process.exitCode = 2;
   } else {

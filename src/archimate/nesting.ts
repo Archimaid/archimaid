@@ -5,9 +5,7 @@ import type { ArchiMateNesting, ArchiMateRelationship } from './model.js';
 
 export type NestingDeclaration = Extract<Declaration, { kind: 'nesting' }>;
 
-const parentToChildNestingTypes = new Set([
-  'composition', 'aggregation', 'assignment', 'realization', 'access',
-]);
+const parentToChildNestingTypes = new Set(['composition', 'aggregation', 'assignment', 'realization', 'access']);
 
 function supportsNesting(entry: ArchiMateRelationship, child: string, parent: string): boolean {
   return entry.type === 'specialization'
@@ -61,8 +59,12 @@ function inferNestingRelationship(
   const candidates = context.relationships.filter((entry) => supportsNesting(entry, child, parent));
   const [only] = candidates;
   if (only && candidates.length === 1) return only;
-  if (candidates.length === 0 && context.relationships.some((entry) =>
-    context.invalidRelationshipIds.has(entry.id) && connects(entry, child, parent))) {
+  if (
+    candidates.length === 0 &&
+    context.relationships.some(
+      (entry) => context.invalidRelationshipIds.has(entry.id) && connects(entry, child, parent),
+    )
+  ) {
     return undefined;
   }
   context.report(
@@ -70,8 +72,11 @@ function inferNestingRelationship(
     statement.parent,
     candidates.length === 0
       ? 'No relationship supports nesting "' + child + '" in "' + parent + '".'
-      : 'Several relationships can nest "' + child + '" in "' + parent
-        + '". Declare the intended one with an ID and add "via <relationship-id>".',
+      : 'Several relationships can nest "' +
+          child +
+          '" in "' +
+          parent +
+          '". Declare the intended one with an ID and add "via <relationship-id>".',
   );
   return undefined;
 }
@@ -87,8 +92,9 @@ export function validateNesting(
   for (const statement of declarations) {
     const child = statement.child.image;
     const parent = statement.parent.image;
-    const nonElements = [statement.child, statement.parent]
-      .filter((token) => entities.get(token.image)?.kind !== 'element');
+    const nonElements = [statement.child, statement.parent].filter(
+      (token) => entities.get(token.image)?.kind !== 'element',
+    );
     const unreported = nonElements.filter((token) => !context.unknownEndpointIds.has(token.image));
     for (const token of unreported) {
       report('INVALID_NESTING', token, 'Nesting requires an ArchiMate element. Found "' + token.image + '".');

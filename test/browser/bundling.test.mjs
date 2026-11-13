@@ -1,57 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { hubSource, renderGeometry as geometry, segmentEntersInterior, segments, withMermaidPage } from './helpers.mjs';
 
-// Elements and relationships share the graph group's coordinates, so raw path data compares exactly.
-function geometry(page, id, source) {
-  return page.evaluate(async ({ id, source }) => {
-    const mermaid = await globalThis.archimateHost;
-    const { svg } = await mermaid.render(id, source);
-    const container = document.createElement('div');
-    container.innerHTML = svg;
-    document.body.append(container);
-    try {
-      const root = container.querySelector('svg');
-      const box = (group, selector) => {
-        const { x, y, width, height } = group.querySelector(selector).getBBox();
-        const { e, f } = group.transform.baseVal.consolidate().matrix;
-        return { left: x + e, top: y + f, right: x + e + width, bottom: y + f + height };
-      };
-      const elements = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-element]'),
-        (group) => [group.dataset.archimateElement, box(group, '.archimate-outline')]));
-      const notes = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-note]'),
-        (group) => [group.dataset.archimateNote, box(group, '.archimate-note-outline')]));
-      const edges = Object.fromEntries(Array.from(container.querySelectorAll('[data-archimate-relationship]'), (edge) => [
-        edge.dataset.archimateRelationship,
-        {
-          type: edge.dataset.archimateType,
-          points: edge.getAttribute('d').slice(2).split(' L ').map((pair) => {
-            const [x, y] = pair.split(' ').map(Number);
-            return { x, y };
-          }),
-          dashOffset: edge.getAttribute('stroke-dashoffset'),
-          length: edge.getTotalLength(),
-        },
-      ]));
-      const labels = Array.from(container.querySelectorAll('.archimate-edge-label'), (label) => {
-        const backing = label.previousElementSibling;
-        const [x, y, width, height] = ['x', 'y', 'width', 'height'].map((name) => Number(backing.getAttribute(name)));
-        return { text: label.textContent, left: x, top: y, right: x + width, bottom: y + height };
-      });
-      return { width: root.viewBox.baseVal.width, elements, notes, edges, labels };
-    } finally {
-      container.remove();
-    }
-  }, { id, source });
-}
-
-const segments = (points) => points.slice(1).map((end, index) => [points[index], end]);
 const horizontal = ([a, b]) => a.y === b.y;
-
-function entersBox([a, b], { left, top, right, bottom }) {
-  return Math.min(a.x, b.x) < right - 0.5 && Math.max(a.x, b.x) > left + 0.5
-    && Math.min(a.y, b.y) < bottom - 0.5 && Math.max(a.y, b.y) > top + 0.5;
-}
 
 // Collinear segments that share more than a point.
 function overlapLength([a, b], [c, d]) {
@@ -84,15 +35,11 @@ function assertClearOfElements(rendered, label, ignore = () => false) {
     for (const segment of segments(points)) {
       for (const [element, box] of Object.entries(rendered.elements)) {
         if (ignore(id, element)) continue;
-        assert.equal(entersBox(segment, box), false, `${label}: ${id} crosses ${element}`);
+        assert.equal(segmentEntersInterior(segment, box), false, `${label}: ${id} crosses ${element}`);
       }
     }
   }
 }
-
-const hubSource = ['archimate-beta', 'element applicationComponent hub "Hub"',
-  ...Array.from({ length: 14 }, (_, index) =>
-    `element applicationService s${index} "Service ${index}"\nhub ..|> s${index}`)].join('\n');
 
 const mixedSource = `archimate-beta
 element applicationComponent hub "Hub"
@@ -126,20 +73,27 @@ test('one relationship type from a hub shares at most three anchors and its trun
     for (const second of paths.slice(index + 1)) {
       if (first[0].x === second[0].x && first[0].y === second[0].y) continue;
       for (const a of segments(first)) {
-        assert.ok(segments(second).every((b) => overlapLength(a, b) <= 0), 'separate bundles overlap');
+        assert.ok(
+          segments(second).every((b) => overlapLength(a, b) <= 0),
+          'separate bundles overlap',
+        );
       }
     }
   }
-  const trunkSharers = paths.filter((points) => paths.some((other) => other !== points
-    && overlapLength(segments(points)[0], segments(other)[0]) > 0));
+  const trunkSharers = paths.filter((points) =>
+    paths.some((other) => other !== points && overlapLength(segments(points)[0], segments(other)[0]) > 0),
+  );
   assert.ok(trunkSharers.length >= 12, `${trunkSharers.length} paths share their first segment`);
 });
 
 test('relationships of different types from a hub get their own nested anchors', async () => {
-  const rendered = await withMermaidPage((page) => geometry(page, 'bundle-mixed', mixedSource),
-    { maxRowWidth: 640 });
+  const rendered = await withMermaidPage((page) => geometry(page, 'bundle-mixed', mixedSource), { maxRowWidth: 640 });
   const hub = rendered.elements.hub;
-  const appRows = new Set(Object.entries(rendered.elements).filter(([id]) => id !== 'hub').map(([, box]) => box.top));
+  const appRows = new Set(
+    Object.entries(rendered.elements)
+      .filter(([id]) => id !== 'hub')
+      .map(([, box]) => box.top),
+  );
   assert.equal(appRows.size, 2, 'the apps form two rows above the hub');
   const starts = Object.entries(rendered.edges).map(([id, { type, points }]) => ({ id, type, points }));
   const byAnchor = Map.groupBy(starts, ({ points: [start] }) => `${start.x},${start.y}`);
@@ -170,8 +124,10 @@ test('relationships converging on one element share its anchor, keep dashes in p
   const source = `archimate-beta
 element applicationService service "Order service"
 ${Array.from({ length: 5 }, (_, index) => `element applicationComponent c${index} "Client ${index}"`).join('\n')}
-${Array.from({ length: 5 }, (_, index) =>
-    `relationship realization f${index} c${index} -> service${index === 1 ? ' label "Orders"' : ''}`).join('\n')}`;
+${Array.from(
+  { length: 5 },
+  (_, index) => `relationship realization f${index} c${index} -> service${index === 1 ? ' label "Orders"' : ''}`,
+).join('\n')}`;
   const rendered = await withMermaidPage((page) => geometry(page, 'bundle-converging', source));
   const flows = Object.values(rendered.edges);
   const ends = Map.groupBy(flows, ({ points }) => `${points.at(-1).x},${points.at(-1).y}`);
@@ -184,13 +140,24 @@ ${Array.from({ length: 5 }, (_, index) =>
   const label = rendered.labels.find(({ text }) => text === 'Orders');
   const own = rendered.edges.f1.points;
   const others = ['f0', 'f2', 'f3', 'f4'].map((id) => rendered.edges[id].points);
-  const shared = segments(own).filter((segment) => others.some((points) =>
-    segments(points).some((other) => overlapLength(segment, other) > 0)));
+  const shared = segments(own).filter((segment) =>
+    others.some((points) => segments(points).some((other) => overlapLength(segment, other) > 0)),
+  );
   assert.ok(shared.length > 0, 'the labelled relationship shares part of its route');
-  const gap = ([a, b]) => Math.max(label.left - Math.max(a.x, b.x), Math.min(a.x, b.x) - label.right,
-    label.top - Math.max(a.y, b.y), Math.min(a.y, b.y) - label.bottom, 0);
+  const gap = ([a, b]) =>
+    Math.max(
+      label.left - Math.max(a.x, b.x),
+      Math.min(a.x, b.x) - label.right,
+      label.top - Math.max(a.y, b.y),
+      Math.min(a.y, b.y) - label.bottom,
+      0,
+    );
   const nearestShared = Math.min(...shared.map(gap));
-  const nearestOwn = Math.min(...segments(own).filter((segment) => !shared.includes(segment)).map(gap));
+  const nearestOwn = Math.min(
+    ...segments(own)
+      .filter((segment) => !shared.includes(segment))
+      .map(gap),
+  );
   assert.ok(nearestOwn <= 6, `the label is ${nearestOwn} px from its own branch`);
   assert.ok(nearestShared > nearestOwn, 'the label sits beside its own branch rather than the shared trunk');
   assertClearOfElements(rendered, 'converging');
@@ -211,7 +178,16 @@ n --- s0`;
   const { suite, hub } = rendered.elements;
   const serving = Object.entries(rendered.edges).filter(([id]) => /^hub__serving__s\d$/u.test(id));
   assert.equal(serving.length, 4);
-  const anchors = new Set(serving.map(([, { points: [start] }]) => `${start.x},${start.y}`));
+  const anchors = new Set(
+    serving.map(
+      ([
+        ,
+        {
+          points: [start],
+        },
+      ]) => `${start.x},${start.y}`,
+    ),
+  );
   assert.ok(anchors.size < serving.length, 'the serving relationships inside the container share an anchor');
   for (const [id, { points }] of serving) {
     for (const { x, y } of points) {
@@ -223,7 +199,10 @@ n --- s0`;
   assert.ok(sideOf(hub, loop[0]) && sideOf(hub, loop.at(-1)));
   for (const [, { points }] of serving) {
     for (const segment of segments(loop)) {
-      assert.ok(segments(points).every((other) => overlapLength(segment, other) <= 0), 'the loop is not bundled');
+      assert.ok(
+        segments(points).every((other) => overlapLength(segment, other) <= 0),
+        'the loop is not bundled',
+      );
     }
   }
   const note = rendered.edges.n__association__s0.points;

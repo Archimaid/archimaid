@@ -27,7 +27,9 @@ test('the browser host loads ELK in its own chunk, apart from the renderer', asy
     metafile: true,
   });
   const chunks = Object.entries(metafile.outputs).map(([path, { inputs, entryPoint }]) => ({
-    path, entryPoint, inputs: Object.keys(inputs),
+    path,
+    entryPoint,
+    inputs: Object.keys(inputs),
   }));
   const holding = (pattern) => chunks.filter(({ inputs }) => inputs.some((input) => pattern.test(input)));
   const elk = holding(/elkjs\/lib\/elk\.bundled\.js$/);
@@ -36,7 +38,10 @@ test('the browser host loads ELK in its own chunk, apart from the renderer', asy
   assert.equal(renderer.length, 1);
   assert.notEqual(elk[0].path, renderer[0].path);
   assert.equal(elk[0].entryPoint, undefined);
-  assert.ok(elk[0].inputs.every((input) => /elkjs/.test(input)), elk[0].inputs.join(', '));
+  assert.ok(
+    elk[0].inputs.every((input) => /elkjs/.test(input)),
+    elk[0].inputs.join(', '),
+  );
 });
 
 test('resolves the ELK constructor from either module shape', () => {

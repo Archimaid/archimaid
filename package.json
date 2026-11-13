@@ -2,7 +2,12 @@
   "name": "archimate-mermaid",
   "version": "0.1.0",
   "description": "An external Mermaid diagram type for ArchiMate 3.2",
-  "keywords": ["archimate", "mermaid", "enterprise-architecture", "diagrams-as-code"],
+  "keywords": [
+    "archimate",
+    "mermaid",
+    "enterprise-architecture",
+    "diagrams-as-code"
+  ],
   "license": "MIT",
   "author": "Berny (https://github.com/Berny-art)",
   "homepage": "https://github.com/Berny-art/Archimate-for-Mermaid#readme",
@@ -46,6 +51,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-bundle.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
     "test": "npm run build && node --test test/*.test.mjs",
     "test:browser": "npm run build && node --test test/browser/*.test.mjs",
     "render": "npm run build --silent && node dist/cli.js render",
@@ -67,10 +74,16 @@
     "elkjs": "0.12.0"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "22.15.3",
     "esbuild": "0.25.12",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.14.0",
     "mermaid": "12.3.0",
     "playwright": "1.56.1",
-    "typescript": "5.9.3"
+    "prettier": "3.10.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2"
   }
 }

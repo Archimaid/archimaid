@@ -26,7 +26,7 @@ export class ArchiMateError extends Error {
     readonly column: number,
     readonly detail: string,
   ) {
-    super('Line ' + line + ', column ' + column + ': ' + detail);
+    super(`Line ${line}, column ${column}: ${detail}`);
     this.name = 'ArchiMateError';
   }
 }
@@ -61,7 +61,10 @@ export interface ArchiMateValidationResult {
 export class DiagnosticCollector {
   readonly diagnostics: ArchiMateDiagnostic[] = [];
 
-  constructor(private readonly text: string, private readonly lineOffset: number) {}
+  constructor(
+    private readonly text: string,
+    private readonly lineOffset: number,
+  ) {}
 
   get hasErrors(): boolean {
     return this.diagnostics.some(({ severity }) => severity === 'error');

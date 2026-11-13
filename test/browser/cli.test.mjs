@@ -13,7 +13,9 @@ test('archimate render draws a diagram from the prebuilt browser bundle, without
   const directory = mkdtempSync(join(tmpdir(), 'archimate-render-'));
   try {
     const output = join(directory, 'diagram.svg');
-    const result = spawnSync(process.execPath, [cli, 'render', '--theme', 'dark', example, output], { encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [cli, 'render', '--theme', 'dark', example, output], {
+      encoding: 'utf8',
+    });
     assert.equal(result.status, 0, result.stderr);
     const svg = readFileSync(output, 'utf8');
     assert.match(svg, /^<svg[^>]+aria-roledescription="archimate"/);

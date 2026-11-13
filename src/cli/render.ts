@@ -29,7 +29,9 @@ function mermaidDirectory(): string {
   try {
     return dirname(fileURLToPath(import.meta.resolve('mermaid')));
   } catch (error) {
-    throw new RenderSetupError('archimate render needs Mermaid. Install it with: npm install mermaid', { cause: error });
+    throw new RenderSetupError('archimate render needs Mermaid. Install it with: npm install mermaid', {
+      cause: error,
+    });
   }
 }
 
@@ -94,10 +96,12 @@ export async function renderSvg(source: string, { theme, background }: RenderOpt
   try {
     const page = await browser.newPage();
     await page.route(`${origin}/**`, (route) => serveModules(route, roots));
-    await page.route(`${origin}/`, (route) => route.fulfill({
-      contentType: 'text/html',
-      body: '<!doctype html><meta charset="utf-8"><title>ArchiMate render</title>',
-    }));
+    await page.route(`${origin}/`, (route) =>
+      route.fulfill({
+        contentType: 'text/html',
+        body: '<!doctype html><meta charset="utf-8"><title>ArchiMate render</title>',
+      }),
+    );
     await page.goto(`${origin}/`);
     const input: PageInput = {
       source,
@@ -108,8 +112,8 @@ export async function renderSvg(source: string, { theme, background }: RenderOpt
       diagramId,
     };
     return await page.evaluate(async ({ source, mermaidUrl, pluginUrl, config, background, diagramId }: PageInput) => {
-      const { default: mermaid } = await import(mermaidUrl) as { default: Mermaid };
-      const plugin = await import(pluginUrl) as { createArchiMatePlugin: typeof createArchiMatePlugin };
+      const { default: mermaid } = (await import(mermaidUrl)) as { default: Mermaid };
+      const plugin = (await import(pluginUrl)) as { createArchiMatePlugin: typeof createArchiMatePlugin };
       mermaid.initialize(config);
       await mermaid.registerExternalDiagrams([plugin.createArchiMatePlugin({ useMaxWidth: false, background })]);
       const { svg } = await mermaid.render(diagramId, source);

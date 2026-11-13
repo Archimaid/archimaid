@@ -1,4 +1,4 @@
-import { markerExtent } from "../geometry.js";
+import { markerExtent } from '../geometry.js';
 
 export const leadLength = 14;
 export const bendCost = 20;

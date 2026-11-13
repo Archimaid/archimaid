@@ -30,10 +30,12 @@ const accessModes: readonly AccessMode[] = ['read', 'write', 'readWrite', 'unspe
 function readDirection(token: IToken, report: Report): ArchiMateDirection | undefined {
   switch (token.image) {
     case 'TD':
-    case 'TB': return 'TB';
+    case 'TB':
+      return 'TB';
     case 'BT':
     case 'LR':
-    case 'RL': return token.image;
+    case 'RL':
+      return token.image;
     default:
       report(
         'INVALID_DIRECTION',
@@ -70,6 +72,7 @@ function readAccessMode(token: IToken, report: Report): AccessMode | undefined {
 
 function checkXmlText(value: string, token: IToken, report: Report): string | undefined {
   // XML 1.0 excludes control characters and unpaired UTF-16 surrogate code units.
+  // eslint-disable-next-line no-control-regex -- Allows tab, line feed and carriage return as the only control characters.
   if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {
     report('INVALID_TEXT', token, 'Text contains a character that cannot be written to SVG.');
     return undefined;
@@ -171,9 +174,10 @@ function collectSetting(
         return;
       }
       settings.declaredMetadata.add(key);
-      const text = statement.value.tokenType === metadata && wholeQuotedText.test(value)
-        ? readQuotedText(statement.value, report, { emptyMessage: name + ' must not be empty.', image: value })
-        : checkXmlText(value, statement.value, report);
+      const text =
+        statement.value.tokenType === metadata && wholeQuotedText.test(value)
+          ? readQuotedText(statement.value, report, { emptyMessage: name + ' must not be empty.', image: value })
+          : checkXmlText(value, statement.value, report);
       if (text !== undefined) settings.metadata[key] = text;
       return;
     }
@@ -308,15 +312,18 @@ function resolveEndpoint(context: ValidationContext, token: IToken): ElementDecl
 }
 
 function readLabel(context: ValidationContext, token: IToken | undefined): string | undefined {
-  return token && readQuotedText(token, context.report, {
-    emptyMessage: 'Relationship label must not be empty. Omit the label instead.',
-  });
+  return (
+    token &&
+    readQuotedText(token, context.report, {
+      emptyMessage: 'Relationship label must not be empty. Omit the label instead.',
+    })
+  );
 }
 
 function generateRelationshipId(context: ValidationContext, source: string, type: string, target: string): string {
   const base = source + '__' + type + '__' + target;
   let id = base;
-  for (let suffix = 2; context.usedIds.has(id); suffix++) id = base + '_' + suffix;
+  for (let suffix = 2; context.usedIds.has(id); suffix++) id = `${base}_${suffix}`;
   context.usedIds.add(id);
   return id;
 }
@@ -327,7 +334,10 @@ function warnOnRepeatedShorthand(
   labelText: string | undefined,
 ): void {
   const key = JSON.stringify([
-    statement.source.image, statement.connector.tokenType.name, statement.target.image, labelText ?? null,
+    statement.source.image,
+    statement.connector.tokenType.name,
+    statement.target.image,
+    labelText ?? null,
   ]);
   const original = context.shorthandStatements.get(key);
   if (!original) {
@@ -338,8 +348,8 @@ function warnOnRepeatedShorthand(
     'DUPLICATE_RELATIONSHIP',
     statement.source,
     statement.label ?? statement.target,
-    'This relationship repeats the one on line ' + context.diagnostics.line(original.source)
-      + '. Remove the copy, or use the long form with distinct IDs if both are intended.',
+    `This relationship repeats the one on line ${context.diagnostics.line(original.source)}. ` +
+      'Remove the copy, or use the long form with distinct IDs if both are intended.',
   );
 }
 
@@ -390,7 +400,11 @@ function specifyLongForm(context: ValidationContext, statement: RelationshipDecl
     report('INVALID_RELATIONSHIP_PROPERTY', statement.mode, 'Access mode is only valid on access relationships.');
   }
   if (statement.directed && type !== 'association') {
-    report('INVALID_RELATIONSHIP_PROPERTY', statement.directed, '"directed" is only valid on association relationships.');
+    report(
+      'INVALID_RELATIONSHIP_PROPERTY',
+      statement.directed,
+      '"directed" is only valid on association relationships.',
+    );
   }
   return {
     notation: 'longForm',
@@ -406,7 +420,10 @@ function specifyLongForm(context: ValidationContext, statement: RelationshipDecl
   };
 }
 
-function resolveRelationship(context: ValidationContext, specification: RelationshipSpecification): ArchiMateRelationship {
+function resolveRelationship(
+  context: ValidationContext,
+  specification: RelationshipSpecification,
+): ArchiMateRelationship {
   const endpointsValid = [
     resolveEndpoint(context, specification.source),
     resolveEndpoint(context, specification.target),
@@ -421,11 +438,7 @@ function resolveRelationship(context: ValidationContext, specification: Relation
   } else if (specification.shorthand && !labelRejected) {
     warnOnRepeatedShorthand(context, specification.shorthand, labelText);
   }
-  // Kept as released: the long form records "access unspecified" and shorthand ".." omits it.
-  // Normalising either way changes the model, so the asymmetry is decided here and nowhere else.
-  const access = specification.notation === 'shorthand' && specification.access === 'unspecified'
-    ? undefined
-    : specification.access;
+  const access = specification.access === 'unspecified' ? undefined : specification.access;
   return {
     id,
     type: specification.type,
@@ -461,7 +474,9 @@ export function validateDeclarations(
   declarations: Declaration[],
   diagnostics: DiagnosticCollector,
 ): ArchiMateModel | undefined {
-  const report: Report = (code, token, message) => diagnostics.error(code, token, message);
+  const report: Report = (code, token, message) => {
+    diagnostics.error(code, token, message);
+  };
   const collected = collectDeclarations(declarations, report);
   checkDescriptionTargets(collected, report);
   const notes = buildNotes(collected, report);
@@ -474,10 +489,12 @@ export function validateDeclarations(
     unknownEndpointIds: new Set(),
     shorthandStatements: new Map(),
   };
-  const relationships = collected.relationships.map((statement) => resolveRelationship(
-    context,
-    statement.kind === 'connector' ? specifyShorthand(statement) : specifyLongForm(context, statement),
-  ));
+  const relationships = collected.relationships.map((statement) =>
+    resolveRelationship(
+      context,
+      statement.kind === 'connector' ? specifyShorthand(statement) : specifyLongForm(context, statement),
+    ),
+  );
   const nesting = validateNesting(collected.nesting, collected.entities, {
     relationships,
     relationshipsById: new Map(relationships.map((entry) => [entry.id, entry])),

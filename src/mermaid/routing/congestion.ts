@@ -1,6 +1,6 @@
-import type { Point } from "../architectureLayout.js";
-import { crossingCost, trackGap } from "./constants.js";
-import { firstAtLeast, otherAxis, type Axis } from "./primitives.js";
+import type { Point } from '../architectureLayout.js';
+import { crossingCost, trackGap } from './constants.js';
+import { firstAtLeast, otherAxis, type Axis } from './primitives.js';
 
 type Track = readonly [from: number, to: number, owner: string | undefined];
 type Tracks = Record<Axis, Map<number, Track[]>>;
@@ -8,8 +8,8 @@ type Tracks = Record<Axis, Map<number, Track[]>>;
 export type RouteCost = (axis: Axis, start: Point, end: Point) => number;
 
 export interface Congestion {
-  cost(axis: Axis, start: Point, end: Point, owner?: string): number;
-  add(axis: Axis, across: number, from: number, to: number, owner?: string): void;
+  readonly cost: (axis: Axis, start: Point, end: Point, owner?: string) => number;
+  readonly add: (axis: Axis, across: number, from: number, to: number, owner?: string) => void;
 }
 
 // Lines are cached for the whole diagram and updated as routes are recorded, because rebuilding them
@@ -24,8 +24,8 @@ export function createCongestion(): Congestion {
   function line(axis: Axis, coordinate: number): Line {
     const cached = lines[axis].get(coordinate);
     if (cached) return cached;
-    const parallel: Line["parallel"] = [];
-    const crossings: Line["crossings"] = [];
+    const parallel: Line['parallel'] = [];
+    const crossings: Line['crossings'] = [];
     for (const [offset, ranges] of tracks[axis]) {
       const distance = Math.abs(coordinate - offset);
       if (distance >= trackGap) continue;

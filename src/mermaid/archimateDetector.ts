@@ -1,7 +1,7 @@
-import type { ExternalDiagramDefinition } from "mermaid";
-import type { ArchiMatePalette } from "./styles.js";
+import type { ExternalDiagramDefinition } from 'mermaid';
+import type { ArchiMatePalette } from './styles.js';
 
-const diagramId = "archimate";
+const diagramId = 'archimate';
 
 export interface ArchiMatePluginOptions {
   readonly palette?: ArchiMatePalette;
@@ -11,33 +11,35 @@ export interface ArchiMatePluginOptions {
   readonly background?: ArchiMateBackground;
 }
 
-export type ArchiMateBackground = "theme" | "transparent";
+export type ArchiMateBackground = 'theme' | 'transparent';
 
 export function createArchiMatePlugin({
-  palette = "modern",
+  palette = 'modern',
   diagramPadding = 24,
   useMaxWidth = true,
   maxRowWidth = 1200,
-  background = "theme",
+  background = 'theme',
 }: ArchiMatePluginOptions = {}): ExternalDiagramDefinition {
   if (!Number.isFinite(diagramPadding) || diagramPadding < 0) {
-    throw new RangeError("ArchiMate diagramPadding must be a finite, nonnegative number.");
+    throw new RangeError('ArchiMate diagramPadding must be a finite, nonnegative number.');
   }
   // Infinity is accepted and turns row wrapping off.
-  if (typeof maxRowWidth !== "number" || Number.isNaN(maxRowWidth) || maxRowWidth <= 0) {
-    throw new RangeError("ArchiMate maxRowWidth must be a number greater than 0, or Infinity.");
+  if (typeof maxRowWidth !== 'number' || Number.isNaN(maxRowWidth) || maxRowWidth <= 0) {
+    throw new RangeError('ArchiMate maxRowWidth must be a number greater than 0, or Infinity.');
   }
-  if (background !== "theme" && background !== "transparent") {
+  // JavaScript callers can pass any value.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (background !== 'theme' && background !== 'transparent') {
     throw new RangeError(`ArchiMate background must be "theme" or "transparent".`);
   }
-  if (typeof useMaxWidth !== "boolean") {
-    throw new TypeError("ArchiMate useMaxWidth must be a boolean.");
+  if (typeof useMaxWidth !== 'boolean') {
+    throw new TypeError('ArchiMate useMaxWidth must be a boolean.');
   }
   return {
     id: diagramId,
     detector: (text) => /^\s*archimate-beta(?=\s|$)/u.test(text),
     async loader() {
-      const { createArchimateDiagram } = await import("./archimateDiagram.js");
+      const { createArchimateDiagram } = await import('./archimateDiagram.js');
       const diagram = createArchimateDiagram({ palette, diagramPadding, useMaxWidth, maxRowWidth, background });
       return { id: diagramId, diagram };
     },

@@ -1,5 +1,5 @@
-import type { Arrangement, LayoutRelationship, PlacedNode, SizedNode } from "./architectureLayout.js";
-import { required } from "./invariant.js";
+import type { Arrangement, LayoutRelationship, PlacedNode, SizedNode } from './architectureLayout.js';
+import { required } from './invariant.js';
 
 interface Endpoint {
   owner: SizedNode;
@@ -23,7 +23,9 @@ function project(nodes: readonly SizedNode[], relationships: readonly LayoutRela
   for (const owner of nodes) {
     function visit(node: PlacedNode, left: number): void {
       endpoints.set(node.id, {
-        owner, offset: left + node.width / 2 - owner.node.width / 2, nested: node !== owner.node,
+        owner,
+        offset: left + node.width / 2 - owner.node.width / 2,
+        nested: node !== owner.node,
       });
       for (const child of node.children ?? []) visit(child, left + child.x);
     }
@@ -45,7 +47,7 @@ function layerRanks(nodes: readonly SizedNode[], links: readonly Link[]): SizedN
     return member;
   }
   for (const { source, target, type } of links) {
-    if (type !== "triggering") continue;
+    if (type !== 'triggering') continue;
     const a = root(source.owner);
     const b = root(target.owner);
     if (a !== b) groups.set(b, a);
@@ -66,9 +68,13 @@ function layerRanks(nodes: readonly SizedNode[], links: readonly Link[]): SizedN
     if (a === b) continue;
     connect(a, b);
     connect(b, a);
-    const deployment = type === "assignment" && a.row === "technology" && target.owner.column === "passiveStructure";
-    const ordered = type === "realization" || type === "serving" || deployment ? [b, a] as const
-      : type === "assignment" && a.row !== "technology" ? [a, b] as const : undefined;
+    const deployment = type === 'assignment' && a.row === 'technology' && target.owner.column === 'passiveStructure';
+    const ordered =
+      type === 'realization' || type === 'serving' || deployment
+        ? ([b, a] as const)
+        : type === 'assignment' && a.row !== 'technology'
+          ? ([a, b] as const)
+          : undefined;
     if (!ordered) continue;
     const [above, below] = ordered;
     let targets = outgoing.get(above);
@@ -101,8 +107,11 @@ function layerRanks(nodes: readonly SizedNode[], links: readonly Link[]): SizedN
   for (const node of nodes) {
     const owner = root(node);
     const neighbors = adjacent.get(owner) ?? [];
-    const rank = values.get(owner) ?? (outgoing.has(owner) ? 0
-      : neighbors.reduce((deepest, neighbor) => Math.max(deepest, values.get(neighbor) ?? 0), 0));
+    const rank =
+      values.get(owner) ??
+      (outgoing.has(owner)
+        ? 0
+        : neighbors.reduce((deepest, neighbor) => Math.max(deepest, values.get(neighbor) ?? 0), 0));
     const siblings = ranks.get(rank);
     if (siblings) siblings.push(node);
     else ranks.set(rank, [node]);
@@ -165,8 +174,10 @@ function rowWidth(nodes: readonly SizedNode[], gap: number): number {
 }
 
 function initialOrder(nodes: readonly SizedNode[], triggers: ReadonlyMap<string, readonly string[]>): PlacedNode[] {
-  return sequence([...nodes].sort((a, b) =>
-    Number(b.column === "passiveStructure") - Number(a.column === "passiveStructure")), triggers);
+  return sequence(
+    [...nodes].sort((a, b) => Number(b.column === 'passiveStructure') - Number(a.column === 'passiveStructure')),
+    triggers,
+  );
 }
 
 function wrapRank(rank: Rank, ordered: readonly PlacedNode[], gap: number, maxWidth: number): Rank[] {
@@ -180,7 +191,7 @@ function wrapRank(rank: Rank, ordered: readonly PlacedNode[], gap: number, maxWi
   let row: SizedNode[] = [];
   let used = 0;
   for (const node of ordered) {
-    const owner = required(owners.get(node), "the ranked node of a wrapped row");
+    const owner = required(owners.get(node), 'the ranked node of a wrapped row');
     const size = node.width + gap;
     if (row.length && (used + size > share + size / 2 || used + node.width > maxWidth)) {
       rows.push(row);
@@ -213,24 +224,26 @@ export function placeConnectedLayers(
       if (edges) edges.push(link);
       else incident.set(owner, [link]);
     }
-    if (type === "triggering") {
+    if (type === 'triggering') {
       const outgoing = triggers.get(source.owner.node.id);
       if (outgoing) outgoing.push(target.owner.node.id);
       else triggers.set(source.owner.node.id, [target.owner.node.id]);
     }
   }
-  const ranks: Rank[] = layers.flatMap((layer) => layerRanks(
-    nodes.filter(({ row }) => row === layer),
-    links.filter(({ source, target }) => source.owner.row === layer && target.owner.row === layer),
-  ).flatMap((nodes) => {
-    const rank = { layer, nodes };
-    return wrapRank(rank, initialOrder(nodes, triggers), gap, maxRowWidth);
-  }));
+  const ranks: Rank[] = layers.flatMap((layer) =>
+    layerRanks(
+      nodes.filter(({ row }) => row === layer),
+      links.filter(({ source, target }) => source.owner.row === layer && target.owner.row === layer),
+    ).flatMap((nodes) => {
+      const rank = { layer, nodes };
+      return wrapRank(rank, initialOrder(nodes, triggers), gap, maxRowWidth);
+    }),
+  );
   const rankByNode = new Map(ranks.flatMap((rank) => rank.nodes.map((node) => [node, rank] as const)));
   const processRanks = new Set<Rank>();
   for (const { source, target, type } of projected) {
     const rank = rankByNode.get(source.owner);
-    if (type === "triggering" && rank && rank === rankByNode.get(target.owner)) processRanks.add(rank);
+    if (type === 'triggering' && rank && rank === rankByNode.get(target.owner)) processRanks.add(rank);
   }
 
   let anchor = 0;
@@ -268,20 +281,23 @@ export function placeConnectedLayers(
         const other = rankByNode.get(there.owner);
         if (!other || !nearby.has(other)) continue;
         const neighbor = there.owner.node;
-        const vertical = type === "realization" || type === "serving";
-        const hostingPeer = type === "assignment" && rank.layer === "technology" && here === source;
-        if (other === rank && type !== "access" && !hostingPeer) continue;
-        const separation = type === "access" ? (neighbor.width + node.width) / 2 + gap : 0;
-        const weight = vertical ? (here.nested || there.nested ? 10 : 5) : type === "access" ? 2 : 1;
+        const vertical = type === 'realization' || type === 'serving';
+        const hostingPeer = type === 'assignment' && rank.layer === 'technology' && here === source;
+        if (other === rank && type !== 'access' && !hostingPeer) continue;
+        const separation = type === 'access' ? (neighbor.width + node.width) / 2 + gap : 0;
+        const weight = vertical ? (here.nested || there.nested ? 10 : 5) : type === 'access' ? 2 : 1;
         positions.push({
-          center: neighbor.x + neighbor.width / 2 + there.offset - here.offset + (here === source ? separation : -separation),
+          center:
+            neighbor.x + neighbor.width / 2 + there.offset - here.offset + (here === source ? separation : -separation),
           weight,
         });
       }
       preferred.set(node, preferredCenter(positions));
     }
-    const ordered = sequence([...rank.nodes].sort((a, b) =>
-      (preferred.get(a.node)?.center ?? 0) - (preferred.get(b.node)?.center ?? 0)), triggers);
+    const ordered = sequence(
+      [...rank.nodes].sort((a, b) => (preferred.get(a.node)?.center ?? 0) - (preferred.get(b.node)?.center ?? 0)),
+      triggers,
+    );
     pack(ordered, preferred, gap);
     nearby.add(rank);
   }

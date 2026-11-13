@@ -1,7 +1,7 @@
-import type { Box, Point } from "../architectureLayout.js";
-import { bendCost, leadLength } from "./constants.js";
+import type { Box, Point } from '../architectureLayout.js';
+import { bendCost, leadLength } from './constants.js';
 
-export type Axis = "x" | "y";
+export type Axis = 'x' | 'y';
 export interface Port {
   anchor: Point;
   lead: Point;
@@ -16,15 +16,16 @@ export interface Bounds {
   bottom: number;
 }
 
-
 export function otherAxis(axis: Axis): Axis {
-  return axis === "x" ? "y" : "x";
+  return axis === 'x' ? 'y' : 'x';
 }
 
 export function bounds(box: Box, padding = 0): Bounds {
   return {
-    left: box.x - padding, right: box.x + box.width + padding,
-    top: box.y - padding, bottom: box.y + box.height + padding,
+    left: box.x - padding,
+    right: box.x + box.width + padding,
+    top: box.y - padding,
+    bottom: box.y + box.height + padding,
   };
 }
 
@@ -33,13 +34,11 @@ export function crosses(start: Point, end: Point, obstacles: readonly Bounds[]):
   if (start.y === end.y) {
     const left = Math.min(start.x, end.x);
     const right = Math.max(start.x, end.x);
-    return obstacles.some((box) => box.top < start.y && start.y < box.bottom
-      && left < box.right && right > box.left);
+    return obstacles.some((box) => box.top < start.y && start.y < box.bottom && left < box.right && right > box.left);
   }
   const top = Math.min(start.y, end.y);
   const bottom = Math.max(start.y, end.y);
-  return obstacles.some((box) => box.left < start.x && start.x < box.right
-    && top < box.bottom && bottom > box.top);
+  return obstacles.some((box) => box.left < start.x && start.x < box.right && top < box.bottom && bottom > box.top);
 }
 
 export function ports(box: Box, fraction: number, inside: boolean): Port[] {
@@ -51,11 +50,11 @@ export function ports(box: Box, fraction: number, inside: boolean): Port[] {
   const bottom = box.y + box.height;
   const lead = inside ? -leadLength : leadLength;
   const choices: Port[] = [
-    { anchor: { x, y: bottom }, lead: { x, y: bottom + lead }, axis: "y", cost: 0 },
-    { anchor: { x: box.x, y }, lead: { x: box.x - lead, y }, axis: "x", cost: 0 },
-    { anchor: { x: right, y }, lead: { x: right + lead, y }, axis: "x", cost: 0 },
+    { anchor: { x, y: bottom }, lead: { x, y: bottom + lead }, axis: 'y', cost: 0 },
+    { anchor: { x: box.x, y }, lead: { x: box.x - lead, y }, axis: 'x', cost: 0 },
+    { anchor: { x: right, y }, lead: { x: right + lead, y }, axis: 'x', cost: 0 },
   ];
-  if (!inside) choices.push({ anchor: { x, y: box.y }, lead: { x, y: box.y - lead }, axis: "y", cost: 0 });
+  if (!inside) choices.push({ anchor: { x, y: box.y }, lead: { x, y: box.y - lead }, axis: 'y', cost: 0 });
   return choices;
 }
 
@@ -72,15 +71,15 @@ export function firstAtLeast(sorted: ArrayLike<number>, value: number, strictlyA
 }
 
 export function axisSize(box: Box, axis: Axis): number {
-  return axis === "x" ? box.width : box.height;
+  return axis === 'x' ? box.width : box.height;
 }
 
 export function pointDistance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-export type Side = "top" | "bottom" | "left" | "right";
-export const oppositeSide = { top: "bottom", bottom: "top", left: "right", right: "left" } satisfies Record<Side, Side>;
+export type Side = 'top' | 'bottom' | 'left' | 'right';
+export const oppositeSide = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' } satisfies Record<Side, Side>;
 
 export function beyondSides(box: Box, other: Box): Record<Side, boolean> {
   return {
@@ -98,16 +97,21 @@ export function facing(candidates: readonly Port[], box: Box, other: Box): Port[
   return candidates.map((port) => {
     const side = portSide(box, port.anchor);
     // Layers stack vertically, so a horizontal exit toward another rank would claim the channel between ranks.
-    const cost = beyond[side] ? (port.axis === "x" && vertical ? bendCost : 0)
-      : beyond[oppositeSide[side]] ? 3 * bendCost : bendCost;
+    const cost = beyond[side]
+      ? port.axis === 'x' && vertical
+        ? bendCost
+        : 0
+      : beyond[oppositeSide[side]]
+        ? 3 * bendCost
+        : bendCost;
     return { ...port, cost };
   });
 }
 
 export function portSide(box: Box, point: Point): Side {
-  if (point.x === box.x) return "left";
-  if (point.x === box.x + box.width) return "right";
-  return point.y === box.y ? "top" : "bottom";
+  if (point.x === box.x) return 'left';
+  if (point.x === box.x + box.width) return 'right';
+  return point.y === box.y ? 'top' : 'bottom';
 }
 
 export function centre(box: Box): Point {
@@ -118,13 +122,13 @@ export function sidePort(box: Box, side: Side, position: number): Port {
   const right = box.x + box.width;
   const bottom = box.y + box.height;
   switch (side) {
-    case "top":
-      return { anchor: { x: position, y: box.y }, lead: { x: position, y: box.y - leadLength }, axis: "y", cost: 0 };
-    case "bottom":
-      return { anchor: { x: position, y: bottom }, lead: { x: position, y: bottom + leadLength }, axis: "y", cost: 0 };
-    case "left":
-      return { anchor: { x: box.x, y: position }, lead: { x: box.x - leadLength, y: position }, axis: "x", cost: 0 };
-    case "right":
-      return { anchor: { x: right, y: position }, lead: { x: right + leadLength, y: position }, axis: "x", cost: 0 };
+    case 'top':
+      return { anchor: { x: position, y: box.y }, lead: { x: position, y: box.y - leadLength }, axis: 'y', cost: 0 };
+    case 'bottom':
+      return { anchor: { x: position, y: bottom }, lead: { x: position, y: bottom + leadLength }, axis: 'y', cost: 0 };
+    case 'left':
+      return { anchor: { x: box.x, y: position }, lead: { x: box.x - leadLength, y: position }, axis: 'x', cost: 0 };
+    case 'right':
+      return { anchor: { x: right, y: position }, lead: { x: right + leadLength, y: position }, axis: 'x', cost: 0 };
   }
 }

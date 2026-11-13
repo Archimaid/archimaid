@@ -1,43 +1,64 @@
-import type { ElkExtendedEdge, ElkNode } from "elkjs/lib/elk.bundled.js";
+import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import {
   getRelationshipNotation,
   relationshipNames,
   relationshipTypes,
-  type AccessMode,
+  type SpecifiedAccessMode,
   type RelationshipType,
-} from "../../archimate/catalogue.js";
-import type { ArchiMateModel } from "../../archimate/model.js";
-import { ancestors } from "../hierarchy.js";
-import type { MeasuredDiagram } from "./measure.js";
+} from '../../archimate/catalogue.js';
+import type { ArchiMateModel } from '../../archimate/model.js';
+import { ancestors } from '../hierarchy.js';
+import type { MeasuredDiagram } from './measure.js';
 import {
-  edgeLabelPadding, elkLayerSpacing, elkNodeSpacing, headerLabelPadding, iconLabelGap, iconRightInset, iconSize,
-  layoutPadding, minimumElementWidth, minimumHeaderHeight, minimumNoteHeight, noteFold, noteInset, noteOverlap,
-  notesBelowHost, plainLabelInset, usesArchitectureLayout,
-  type EdgeAppearance, type MeasuredElkNode, type NodeAppearance, type NoteAppearance, type Relationship,
-} from "./shared.js";
+  edgeLabelPadding,
+  elkLayerSpacing,
+  elkNodeSpacing,
+  headerLabelPadding,
+  iconLabelGap,
+  iconRightInset,
+  iconSize,
+  layoutPadding,
+  minimumElementWidth,
+  minimumHeaderHeight,
+  minimumNoteHeight,
+  noteFold,
+  noteInset,
+  noteOverlap,
+  notesBelowHost,
+  plainLabelInset,
+  usesArchitectureLayout,
+  type EdgeAppearance,
+  type MeasuredElkNode,
+  type NodeAppearance,
+  type NoteAppearance,
+  type Relationship,
+} from './shared.js';
 
 const layoutDirection = {
-  TB: "DOWN",
-  BT: "UP",
-  LR: "RIGHT",
-  RL: "LEFT",
-} satisfies Record<ArchiMateModel["direction"], string>;
+  TB: 'DOWN',
+  BT: 'UP',
+  LR: 'RIGHT',
+  RL: 'LEFT',
+} satisfies Record<ArchiMateModel['direction'], string>;
 
 function isRelationshipType(type: string): type is RelationshipType {
   return (relationshipTypes as readonly string[]).includes(type);
 }
 
 const accessModeWords = {
-  read: "read",
-  write: "write",
-  readWrite: "read and write",
-  unspecified: undefined,
-} satisfies Record<AccessMode, string | undefined>;
+  read: 'read',
+  write: 'write',
+  readWrite: 'read and write',
+} satisfies Record<SpecifiedAccessMode, string>;
 
 function relationshipDescription(relationship: Relationship, names: ReadonlyMap<string, string>): string {
   const typeName = isRelationshipType(relationship.type) ? relationshipNames[relationship.type] : relationship.type;
-  const mode = relationship.type === "access" ? accessModeWords[relationship.access ?? "unspecified"] : undefined;
-  const qualifier = mode ? ` (${mode})` : relationship.type === "association" && relationship.directed ? " (directed)" : "";
+  const mode = relationship.type === 'access' ? relationship.access && accessModeWords[relationship.access] : undefined;
+  const qualifier = mode
+    ? ` (${mode})`
+    : relationship.type === 'association' && relationship.directed
+      ? ' (directed)'
+      : '';
   const source = names.get(relationship.source) ?? relationship.source;
   const target = names.get(relationship.target) ?? relationship.target;
   const description = `${source} — ${typeName}${qualifier} → ${target}`;
@@ -78,7 +99,8 @@ function layoutNodes(measured: MeasuredDiagram, model: ArchiMateModel): LayoutNo
     const label = measured.notes[index];
     if (!label) throw new Error(`The note "${note.id}" was not measured.`);
     const appearance = {
-      note, label,
+      note,
+      label,
       width: Math.max(minimumElementWidth, label.width + 2 * (noteInset + noteFold)),
       height: Math.max(minimumNoteHeight, label.height + 2 * noteInset),
     };
@@ -103,12 +125,14 @@ function layoutNodes(measured: MeasuredDiagram, model: ArchiMateModel): LayoutNo
       : plainLabelInset;
     const attached = overlays.get(element.id) ?? [];
     const notesHeight = attached.length
-      ? attached.reduce((height, note) => height + note.height, 0)
-        + (attached.length - 1) * noteInset - noteOverlap
+      ? attached.reduce((height, note) => height + note.height, 0) + (attached.length - 1) * noteInset - noteOverlap
       : 0;
     const headerHeight = Math.max(minimumHeaderHeight, label.height + headerLabelPadding);
-    const width = Math.max(minimumElementWidth, label.width + 2 * labelInset,
-      ...attached.map(({ width }) => width + 2 * noteInset));
+    const width = Math.max(
+      minimumElementWidth,
+      label.width + 2 * labelInset,
+      ...attached.map(({ width }) => width + 2 * noteInset),
+    );
     nodes.set(internalId, { element, type, notation, label, headerHeight, notesHeight });
     nodeIds.set(element.id, internalId);
     elkNodes.set(element.id, { id: internalId, width, height: headerHeight + notesHeight });
@@ -134,14 +158,14 @@ function nestLayoutNodes(model: ArchiMateModel, { nodes, elkNodes, children }: L
       const top = appearance.headerHeight + (notesBelow ? 0 : appearance.notesHeight);
       const bottom = layoutPadding + (notesBelow ? appearance.notesHeight : 0);
       // ELK Layered reads compound minimum sizes in its horizontal coordinate system.
-      const vertical = model.direction === "TB" || model.direction === "BT";
+      const vertical = model.direction === 'TB' || model.direction === 'BT';
       const minimumSize = vertical
         ? `(${container.height},${container.width})`
         : `(${container.width},${container.height})`;
       container.layoutOptions = {
-        "elk.padding": `[top=${top},left=${layoutPadding},bottom=${bottom},right=${layoutPadding}]`,
-        "elk.nodeSize.constraints": "MINIMUM_SIZE",
-        "elk.nodeSize.minimum": minimumSize,
+        'elk.padding': `[top=${top},left=${layoutPadding},bottom=${bottom},right=${layoutPadding}]`,
+        'elk.nodeSize.constraints': 'MINIMUM_SIZE',
+        'elk.nodeSize.minimum': minimumSize,
       };
     }
     container.children.push(member);
@@ -159,7 +183,9 @@ interface LayoutEdges {
 }
 
 function layoutEdges(
-  model: ArchiMateModel, measured: MeasuredDiagram, nodeIds: ReadonlyMap<string, string>,
+  model: ArchiMateModel,
+  measured: MeasuredDiagram,
+  nodeIds: ReadonlyMap<string, string>,
   parents: ReadonlyMap<string, string>,
 ): LayoutEdges {
   const edges = new Map<string, EdgeAppearance>();
@@ -169,7 +195,7 @@ function layoutEdges(
   const noteHosts = new Map((model.notes ?? []).map((note) => [note.id, note.on]));
   const relationships: ElkExtendedEdge[] = [];
   const encloses = (outer: string, inner: string | undefined): boolean =>
-    ancestors(inner ?? "", parents).includes(outer);
+    ancestors(inner ?? '', parents).includes(outer);
   const nestedWithHost = (note: string, other: string): boolean => {
     const host = noteHosts.get(note);
     return host !== undefined && (encloses(other, host) || encloses(host, other));
@@ -179,8 +205,7 @@ function layoutEdges(
     ...(model.notes ?? []).map(({ id, text }) => [id, text] as const),
   ]);
   for (const [index, relationship] of model.relationships.entries()) {
-    if (nestingRelationships.has(relationship.id) && !relationship.label
-      && (relationship.access === undefined || relationship.access === "unspecified")) {
+    if (nestingRelationships.has(relationship.id) && !relationship.label && relationship.access === undefined) {
       continue;
     }
     const source = nodeIds.get(relationship.source);
@@ -193,13 +218,19 @@ function layoutEdges(
     const internalId = `e${index}`;
     const label = measured.relationshipLabels.get(relationship.id);
     const appearance: EdgeAppearance = {
-      relationship, notation, label, accessibleName: relationshipDescription(relationship, endpointNames),
+      relationship,
+      notation,
+      label,
+      accessibleName: relationshipDescription(relationship, endpointNames),
     };
     // A route between an attached note and a container or member of its host would have to cross the host.
-    const enclosed = !architecture && (nestedWithHost(relationship.source, relationship.target)
-      || nestedWithHost(relationship.target, relationship.source));
+    const enclosed =
+      !architecture &&
+      (nestedWithHost(relationship.source, relationship.target) ||
+        nestedWithHost(relationship.target, relationship.source));
     if ((source === target && relationship.source !== relationship.target) || enclosed) {
-      const host = enclosed ? nodeIds.get(noteHosts.get(relationship.source) ?? noteHosts.get(relationship.target) ?? "")
+      const host = enclosed
+        ? nodeIds.get(noteHosts.get(relationship.source) ?? noteHosts.get(relationship.target) ?? '')
         : source;
       if (host === undefined) {
         throw new Error(`The host of the attached note in relationship "${relationship.id}" is unavailable.`);
@@ -221,24 +252,26 @@ function layoutEdges(
 }
 
 export function buildLayoutGraph(
-  model: ArchiMateModel, measured: MeasuredDiagram, parents: ReadonlyMap<string, string>,
+  model: ArchiMateModel,
+  measured: MeasuredDiagram,
+  parents: ReadonlyMap<string, string>,
 ): LayoutGraph {
   const placed = layoutNodes(measured, model);
   const { nodes, notes, overlays, nodeIds, children } = placed;
   const nested = nestLayoutNodes(model, placed);
   const { edges, overlayLaneCounts, relationships } = layoutEdges(model, measured, nodeIds, parents);
   const input = {
-    id: "archimate",
+    id: 'archimate',
     layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": layoutDirection[model.direction],
-      "elk.edgeRouting": "ORTHOGONAL",
-      "elk.padding": `[top=${layoutPadding},left=${layoutPadding},bottom=${layoutPadding},right=${layoutPadding}]`,
-      "elk.spacing.nodeNode": String(elkNodeSpacing),
-      "elk.layered.spacing.nodeNodeBetweenLayers": String(elkLayerSpacing),
-      "elk.json.shapeCoords": "ROOT",
-      "elk.json.edgeCoords": "ROOT",
-      ...(nested.size > 0 ? { "elk.hierarchyHandling": "INCLUDE_CHILDREN" } : {}),
+      'elk.algorithm': 'layered',
+      'elk.direction': layoutDirection[model.direction],
+      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.padding': `[top=${layoutPadding},left=${layoutPadding},bottom=${layoutPadding},right=${layoutPadding}]`,
+      'elk.spacing.nodeNode': String(elkNodeSpacing),
+      'elk.layered.spacing.nodeNodeBetweenLayers': String(elkLayerSpacing),
+      'elk.json.shapeCoords': 'ROOT',
+      'elk.json.edgeCoords': 'ROOT',
+      ...(nested.size > 0 ? { 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' } : {}),
     },
     children,
     edges: relationships,

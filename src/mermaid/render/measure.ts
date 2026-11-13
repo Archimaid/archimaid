@@ -1,15 +1,23 @@
-import { getElementType } from "../../archimate/catalogue.js";
-import type { ArchiMateModel } from "../../archimate/model.js";
-import type { DiagramTypography } from "../styles.js";
+import { getElementType } from '../../archimate/catalogue.js';
+import type { ArchiMateModel } from '../../archimate/model.js';
+import type { DiagramTypography } from '../styles.js';
 import {
-  edgeLabelClass, edgeLabelWrapWidth, labelClass, lineHeightFactor, nameWrapWidth, noteWrapWidth, titleClass,
-  type Element, type ElementType, type TextMetrics,
-} from "./shared.js";
-import { append } from "./svg.js";
+  edgeLabelClass,
+  edgeLabelWrapWidth,
+  labelClass,
+  lineHeightFactor,
+  nameWrapWidth,
+  noteWrapWidth,
+  titleClass,
+  type Element,
+  type ElementType,
+  type TextMetrics,
+} from './shared.js';
+import { append } from './svg.js';
 
 function breakWord(word: string, maxWidth: number, measure: (line: string) => number): string[] {
   const lines: string[] = [];
-  let current = "";
+  let current = '';
   // Hyphens and underscores stay at the end of a line, where readers expect a continuation.
   for (const piece of word.split(/(?<=[-_])/u)) {
     if (measure(current + piece) <= maxWidth) {
@@ -17,7 +25,7 @@ function breakWord(word: string, maxWidth: number, measure: (line: string) => nu
       continue;
     }
     if (current) lines.push(current);
-    current = "";
+    current = '';
     if (measure(piece) <= maxWidth) {
       current = piece;
       continue;
@@ -43,7 +51,7 @@ function measureText(
   maxWidth?: number,
 ): TextMetrics {
   const lineHeight = Math.ceil(size * lineHeightFactor);
-  textElement.setAttribute("class", className);
+  textElement.setAttribute('class', className);
   const measure = (line: string) => {
     textElement.textContent = line;
     return textElement.getComputedTextLength() || Array.from(line).length * size;
@@ -54,7 +62,7 @@ function measureText(
     }
 
     const wrapped: string[] = [];
-    let current = "";
+    let current = '';
     // Non-breaking spaces are an author's request to keep words on one line.
     for (const word of line.trim().split(/[^\S\u00a0\u2007\u202f]+/u)) {
       const next = current ? `${current} ${word}` : word;
@@ -66,7 +74,7 @@ function measureText(
       }
       if (measure(current) > maxWidth) {
         const pieces = breakWord(current, maxWidth, measure);
-        current = pieces.pop() ?? "";
+        current = pieces.pop() ?? '';
         wrapped.push(...pieces);
       }
     }
@@ -80,7 +88,7 @@ function measureText(
 export interface MeasuredElement {
   readonly element: Element;
   readonly type: ElementType;
-  readonly notation: NonNullable<ElementType["notation"]>;
+  readonly notation: NonNullable<ElementType['notation']>;
   readonly label: TextMetrics;
 }
 
@@ -94,13 +102,17 @@ export interface MeasuredDiagram {
 
 // Text is measured in the diagram's own SVG, where Mermaid's style sheet sets the fonts.
 export function measureDiagram(
-  svg: SVGSVGElement, model: ArchiMateModel, title: string, typography: DiagramTypography,
+  svg: SVGSVGElement,
+  model: ArchiMateModel,
+  title: string,
+  typography: DiagramTypography,
 ): MeasuredDiagram {
-  const measure = append(svg, "text", { visibility: "hidden" });
+  const measure = append(svg, 'text', { visibility: 'hidden' });
   try {
     const titleMetrics = title ? measureText(measure, title, titleClass, typography.titleSize) : undefined;
     const notes = (model.notes ?? []).map((note) =>
-      measureText(measure, note.text, labelClass, typography.labelSize, noteWrapWidth));
+      measureText(measure, note.text, labelClass, typography.labelSize, noteWrapWidth),
+    );
     const elements = model.elements.map((element) => {
       const type = getElementType(element.type);
       if (!type?.notation) {
@@ -109,11 +121,18 @@ export function measureDiagram(
       const label = measureText(measure, element.name, labelClass, typography.labelSize, nameWrapWidth);
       return { element, type, notation: type.notation, label };
     });
-    const relationshipLabels = new Map(model.relationships.flatMap((relationship) => relationship.label
-      ? [[relationship.id, measureText(
-        measure, relationship.label, edgeLabelClass, typography.edgeLabelSize, edgeLabelWrapWidth,
-      )] as const]
-      : []));
+    const relationshipLabels = new Map(
+      model.relationships.flatMap((relationship) =>
+        relationship.label
+          ? [
+              [
+                relationship.id,
+                measureText(measure, relationship.label, edgeLabelClass, typography.edgeLabelSize, edgeLabelWrapWidth),
+              ] as const,
+            ]
+          : [],
+      ),
+    );
     return { title: titleMetrics, notes, elements, relationshipLabels };
   } finally {
     measure.remove();

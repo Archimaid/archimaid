@@ -2,46 +2,44 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { elementTypes } from 'archimate-mermaid/language';
-import { renderStandaloneSvg, withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { renderStandaloneSvg, withMermaidPage } from './helpers.mjs';
 
-const example = (name) =>
-  readFile(new URL(`../../examples/${name}.mmd`, import.meta.url), 'utf8');
+const example = (name) => readFile(new URL(`../../examples/${name}.mmd`, import.meta.url), 'utf8');
 
 function render(page, id, source) {
-  return page.evaluate(async ({ id, source }) => {
-    const mermaid = await globalThis.archimateHost;
-    const { svg } = await mermaid.render(id, source);
-    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
-    const outline = (id) => document.querySelector(
-      `[data-archimate-element="${id}"] .archimate-outline`,
-    )?.getAttribute('fill');
-    const line = (id) => {
-      const edge = document.querySelector(`[data-archimate-relationship="${id}"]`);
-      return {
-        start: edge?.getAttribute('marker-start'),
-        end: edge?.getAttribute('marker-end'),
-        dash: edge?.getAttribute('stroke-dasharray'),
+  return page.evaluate(
+    async ({ id, source }) => {
+      const mermaid = await globalThis.archimateHost;
+      const { svg } = await mermaid.render(id, source);
+      const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+      const outline = (id) =>
+        document.querySelector(`[data-archimate-element="${id}"] .archimate-outline`)?.getAttribute('fill');
+      const line = (id) => {
+        const edge = document.querySelector(`[data-archimate-relationship="${id}"]`);
+        return {
+          start: edge?.getAttribute('marker-start'),
+          end: edge?.getAttribute('marker-end'),
+          dash: edge?.getAttribute('stroke-dasharray'),
+        };
       };
-    };
-    return {
-      svg,
-      title: document.querySelector('title')?.textContent,
-      description: document.querySelector('desc')?.textContent,
-      viewBox: document.documentElement.getAttribute('viewBox'),
-      roleColour: outline('clerk'),
-      applicationColour: outline('oms'),
-      assignment: line('clerk_to_fulfil'),
-      access: line('manage__access__order'),
-      markerIds: Array.from(document.querySelectorAll('marker'), (marker) => marker.id),
-    };
-  }, { id, source });
+      return {
+        svg,
+        title: document.querySelector('title')?.textContent,
+        description: document.querySelector('desc')?.textContent,
+        viewBox: document.documentElement.getAttribute('viewBox'),
+        roleColour: outline('clerk'),
+        applicationColour: outline('oms'),
+        assignment: line('clerk_to_fulfil'),
+        access: line('manage__access__order'),
+        markerIds: Array.from(document.querySelectorAll('marker'), (marker) => marker.id),
+      };
+    },
+    { id, source },
+  );
 }
 
 test('Mermaid registers, validates and renders ArchiMate diagrams in the same host', async () => {
-  const [fulfilment, management] = await Promise.all([
-    example('order-fulfilment'),
-    example('order-management'),
-  ]);
+  const [fulfilment, management] = await Promise.all([example('order-fulfilment'), example('order-management')]);
   await withMermaidPage(async (page) => {
     const first = await render(page, 'fulfilment', fulfilment);
     assert.equal(first.title, 'Order fulfilment responsibilities');
@@ -75,12 +73,16 @@ test('Mermaid registers, validates and renders ArchiMate diagrams in the same ho
 
 test('a multi-line accDescr block becomes the accessible description', async () => {
   await withMermaidPage(async (page) => {
-    const { description } = await render(page, 'described', `archimate-beta
+    const { description } = await render(
+      page,
+      'described',
+      `archimate-beta
   accDescr {
     A fulfilment clerk
     fulfils orders.
   }
-  element businessRole clerk "Fulfilment clerk"`);
+  element businessRole clerk "Fulfilment clerk"`,
+    );
     assert.equal(description, 'A fulfilment clerk\nfulfils orders.');
   });
 });
@@ -118,13 +120,17 @@ test('all catalogue entries render with centred labels and corner icons', async 
           type: group.getAttribute('data-archimate-type'),
           name: lines.map((line) => line.textContent).join('\n'),
           hasIcon: icon.querySelector('path') !== null,
-          centred: lines.every((line) => Number(line.getAttribute('x')) === centreX)
-            && (Math.min(...lineYs) + Math.max(...lineYs)) / 2 === centreY,
+          centred:
+            lines.every((line) => Number(line.getAttribute('x')) === centreX) &&
+            (Math.min(...lineYs) + Math.max(...lineYs)) / 2 === centreY,
           topIconGap: iconMatrix.f + iconBox.y * iconMatrix.d - shape.y,
-          rightIconGap: centreX + shape.width / 2
-            - (iconMatrix.e + (iconBox.x + iconBox.width) * iconMatrix.a),
-          colours: [getComputedStyle(outline).fill, getComputedStyle(outline).stroke,
-            getComputedStyle(label).fill, getComputedStyle(icon).stroke],
+          rightIconGap: centreX + shape.width / 2 - (iconMatrix.e + (iconBox.x + iconBox.width) * iconMatrix.a),
+          colours: [
+            getComputedStyle(outline).fill,
+            getComputedStyle(outline).stroke,
+            getComputedStyle(label).fill,
+            getComputedStyle(icon).stroke,
+          ],
         };
       });
     }, source),
@@ -138,7 +144,10 @@ test('all catalogue entries render with centred labels and corner icons', async 
   assert.ok(component.topIconGap > 0 && component.topIconGap <= 6);
   assert.ok(component.rightIconGap > 0 && component.rightIconGap <= 6);
   assert.deepEqual(component.colours, [
-    'rgb(184, 231, 252)', 'rgb(82, 176, 217)', 'rgb(5, 76, 108)', 'rgb(5, 76, 108)',
+    'rgb(184, 231, 252)',
+    'rgb(82, 176, 217)',
+    'rgb(5, 76, 108)',
+    'rgb(5, 76, 108)',
   ]);
 });
 
@@ -146,8 +155,12 @@ test('standalone SVG preserves literal entity-like text and nonbreaking spaces',
   const label = 'Order\u00a0Management #123;, #copy;, and %%{wrap}%%';
   const quotedLabel = JSON.stringify(label).replaceAll('%', '\\u0025');
   const source = [
-    '---', 'title: Release review', '---', '%% A diagram comment',
-    'archimate-beta', `element applicationComponent work ${quotedLabel}`,
+    '---',
+    'title: Release review',
+    '---',
+    '%% A diagram comment',
+    'archimate-beta',
+    `element applicationComponent work ${quotedLabel}`,
   ].join('\n');
   await withMermaidPage(async (page) => {
     const svg = await renderStandaloneSvg(page, 'literal-text', source);
@@ -156,8 +169,10 @@ test('standalone SVG preserves literal entity-like text and nonbreaking spaces',
       return {
         valid: !document.querySelector('parsererror'),
         title: document.querySelector('title')?.textContent,
-        label: Array.from(document.querySelectorAll('[data-archimate-element] text tspan'),
-          (line) => line.textContent).join(' '),
+        label: Array.from(
+          document.querySelectorAll('[data-archimate-element] text tspan'),
+          (line) => line.textContent,
+        ).join(' '),
       };
     }, svg);
     assert.deepEqual(rendered, { valid: true, title: 'Release review', label });

@@ -61,15 +61,17 @@ function diagramsIn(file: string, text: string, explicit: boolean): DiagramSourc
 
 async function filesUnder(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
-  const nested = await Promise.all(entries
-    .filter(({ name }) => !name.startsWith('.') && name !== 'node_modules')
-    .toSorted((left, right) => left.name.localeCompare(right.name))
-    .map(async (entry) => {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) return filesUnder(path);
-      const extension = extname(entry.name).toLowerCase();
-      return entry.isFile() && (diagramExtensions.has(extension) || markdownExtensions.has(extension)) ? [path] : [];
-    }));
+  const nested = await Promise.all(
+    entries
+      .filter(({ name }) => !name.startsWith('.') && name !== 'node_modules')
+      .toSorted((left, right) => left.name.localeCompare(right.name))
+      .map(async (entry) => {
+        const path = join(directory, entry.name);
+        if (entry.isDirectory()) return filesUnder(path);
+        const extension = extname(entry.name).toLowerCase();
+        return entry.isFile() && (diagramExtensions.has(extension) || markdownExtensions.has(extension)) ? [path] : [];
+      }),
+  );
   return nested.flat();
 }
 

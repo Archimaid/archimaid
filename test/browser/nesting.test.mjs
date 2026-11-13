@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withMermaidPage } from '../../scripts/mermaid-browser.mjs';
+import { withMermaidPage } from './helpers.mjs';
 
 async function checkNestedNotes(layout) {
   const source = `archimate-beta
@@ -34,8 +34,12 @@ relationship influence clarification floating -> attached
       const box = (group, selector = '.archimate-outline, .archimate-note-outline') => {
         const { x, y, width, height } = group.querySelector(selector).getBBox();
         const transform = group.transform.baseVal.consolidate().matrix;
-        return { left: x + transform.e, top: y + transform.f,
-          right: x + transform.e + width, bottom: y + transform.f + height };
+        return {
+          left: x + transform.e,
+          top: y + transform.f,
+          right: x + transform.e + width,
+          bottom: y + transform.f + height,
+        };
       };
       const endpoints = (path) => {
         const { x: startX, y: startY } = path.getPointAtLength(0);
@@ -72,24 +76,21 @@ relationship influence clarification floating -> attached
       };
     }, source);
 
-    const contains = (outer, inner) => outer.left < inner.left && outer.top < inner.top
-      && outer.right > inner.right && outer.bottom > inner.bottom;
+    const contains = (outer, inner) =>
+      outer.left < inner.left && outer.top < inner.top && outer.right > inner.right && outer.bottom > inner.bottom;
     const onOutline = ({ left, top, right, bottom }, [x, y], folded = false) => {
       const tolerance = 0.1;
-      const inBounds = x >= left - tolerance && x <= right + tolerance
-        && y >= top - tolerance && y <= bottom + tolerance;
-      const boundary = [x - left, x - right, y - top, y - bottom]
-        .some((distance) => Math.abs(distance) < tolerance);
+      const inBounds =
+        x >= left - tolerance && x <= right + tolerance && y >= top - tolerance && y <= bottom + tolerance;
+      const boundary = [x - left, x - right, y - top, y - bottom].some((distance) => Math.abs(distance) < tolerance);
       const fold = folded && Math.abs(right - x + y - top - 12) < tolerance;
       return inBounds && (boundary || fold);
     };
 
     assert.ok(contains(rendered.suite, rendered.inner));
     assert.ok(contains(rendered.inner, rendered.record));
-    assert.ok(rendered.suiteLabel.top >= rendered.suite.top
-      && rendered.suiteLabel.top - rendered.suite.top <= 16);
-    assert.ok(rendered.innerLabel.top >= rendered.inner.top
-      && rendered.innerLabel.top - rendered.inner.top <= 16);
+    assert.ok(rendered.suiteLabel.top >= rendered.suite.top && rendered.suiteLabel.top - rendered.suite.top <= 16);
+    assert.ok(rendered.innerLabel.top >= rendered.inner.top && rendered.innerLabel.top - rendered.inner.top <= 16);
     assert.ok(rendered.attached.bottom < rendered.innerLabel.top);
     for (const edge of ['top', 'right']) {
       assert.ok(rendered.innerIconInsets[edge] > 0 && rendered.innerIconInsets[edge] <= 6);
@@ -97,10 +98,8 @@ relationship influence clarification floating -> attached
     }
     const centreY = ({ top, bottom }) => (top + bottom) / 2;
     assert.ok(Math.abs(centreY(rendered.recordLabel) - centreY(rendered.record)) <= 2);
-    assert.ok(rendered.attached.top < rendered.inner.top
-      && rendered.attached.bottom > rendered.inner.top);
-    assert.ok(rendered.attached.left > rendered.inner.left
-      && rendered.attached.right < rendered.inner.right);
+    assert.ok(rendered.attached.top < rendered.inner.top && rendered.attached.bottom > rendered.inner.top);
+    assert.ok(rendered.attached.left > rendered.inner.left && rendered.attached.right < rendered.inner.right);
     assert.deepEqual(rendered.noteLines, ['Draft', 'Needs review']);
     assert.ok(rendered.dashed);
     assert.equal(rendered.textColour, 'rgb(0, 0, 0)');

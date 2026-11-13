@@ -1,7 +1,7 @@
-import type { ElkNode, ElkPoint } from "elkjs/lib/elk.bundled.js";
-import type { getElementType, getRelationshipNotation } from "../../archimate/catalogue.js";
-import type { ArchiMateModel, ArchiMateNote } from "../../archimate/model.js";
-import { markerExtent } from "../geometry.js";
+import type { ElkNode, ElkPoint } from 'elkjs/lib/elk.bundled.js';
+import type { getElementType, getRelationshipNotation } from '../../archimate/catalogue.js';
+import type { ArchiMateModel, ArchiMateNote } from '../../archimate/model.js';
+import { markerExtent } from '../geometry.js';
 
 export const layoutPadding = 24;
 export const strokeGutter = 2;
@@ -32,16 +32,16 @@ export const elkLayerSpacing = 76;
 export const nameWrapWidth = 200;
 export const edgeLabelWrapWidth = 180;
 export const noteWrapWidth = 240;
-export const labelClass = "archimate-label";
+export const labelClass = 'archimate-label';
 export const titleClass = `${labelClass} archimate-title`;
 export const edgeLabelClass = `${labelClass} archimate-edge-label`;
 
-export type Element = ArchiMateModel["elements"][number];
-export type Relationship = ArchiMateModel["relationships"][number];
+export type Element = ArchiMateModel['elements'][number];
+export type Relationship = ArchiMateModel['relationships'][number];
 export type ElementType = NonNullable<ReturnType<typeof getElementType>>;
-export type Outline = NonNullable<ElementType["notation"]>["outline"];
+export type Outline = NonNullable<ElementType['notation']>['outline'];
 export type RelationshipNotation = NonNullable<ReturnType<typeof getRelationshipNotation>>;
-export type Marker = Exclude<RelationshipNotation["start"], "none">;
+export type Marker = Exclude<RelationshipNotation['start'], 'none'>;
 export type MeasuredElkNode = ElkNode & { width: number; height: number; children?: MeasuredElkNode[] };
 
 export interface TextMetrics {
@@ -54,7 +54,7 @@ export interface TextMetrics {
 export interface NodeAppearance {
   element: Element;
   type: ElementType;
-  notation: NonNullable<ElementType["notation"]>;
+  notation: NonNullable<ElementType['notation']>;
   label: TextMetrics;
   headerHeight: number;
   notesHeight: number;
@@ -83,28 +83,28 @@ export interface PositionedNode extends ElkPoint {
 
 export interface EdgeEndpoint {
   box: PositionedNode;
-  outline: Outline | "note";
+  outline: Outline | 'note';
   overlayHost?: PositionedNode;
 }
 
 export function iconRightInset(outline: Outline): number {
   // Leave room for the diagonal at the top right of motivation figures.
-  return outline === "chamfered" ? cornerRadius - iconInset + 1 : iconInset;
+  return outline === 'chamfered' ? cornerRadius - iconInset + 1 : iconInset;
 }
 
 export function positioned(node: ElkNode): PositionedNode {
   const { x, y, width, height } = node;
   if (x === undefined || y === undefined || width === undefined || height === undefined) {
-    throw new Error("ELK did not return a position and size for an ArchiMate element.");
+    throw new Error('ELK did not return a position and size for an ArchiMate element.');
   }
   return { x, y, width, height };
 }
 
 export function usesArchitectureLayout(model: ArchiMateModel): boolean {
-  return model.layout === "architecture" || model.layout === "framework";
+  return model.layout === 'architecture' || model.layout === 'framework';
 }
 
 // Relationships leave upward in BT, so attached notes sit on the entry side, mirroring TB.
 export function notesBelowHost(model: ArchiMateModel): boolean {
-  return !usesArchitectureLayout(model) && model.direction === "BT";
+  return !usesArchitectureLayout(model) && model.direction === 'BT';
 }

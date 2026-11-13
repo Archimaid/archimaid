@@ -63,10 +63,7 @@ function analyzeArchiMate(source: string, options: ArchiMateParseOptions): Archi
  * Reports every semantic problem in one pass, sorted by position. Lexical and syntax
  * checks stop at the first problem because later tokens cannot be interpreted reliably.
  */
-export function validateArchiMate(
-  source: string,
-  options: ArchiMateParseOptions = {},
-): ArchiMateValidationResult {
+export function validateArchiMate(source: string, options: ArchiMateParseOptions = {}): ArchiMateValidationResult {
   const { model, diagnostics } = analyzeArchiMate(source, options);
   const sorted = diagnostics.toSorted((left, right) => left.line - right.line || left.column - right.column);
   return { ...(model && { model }), diagnostics: sorted };

@@ -57,6 +57,9 @@ export function blankFrontmatter(text: string): FrontmatterMatch & { readonly te
   const match = matchFrontmatter(normalized);
   if (match.kind !== 'closed') return { ...match, text };
   const lineBreaks = normalized.slice(0, match.length).split('\n').length - 1;
-  const end = text.split(/(?<=\r\n|\r(?!\n)|\n)/).slice(0, lineBreaks).join('').length;
+  const end = text
+    .split(/(?<=\r\n|\r(?!\n)|\n)/)
+    .slice(0, lineBreaks)
+    .join('').length;
   return { ...match, text: text.slice(0, end).replace(/[^\r\n]/g, '') + text.slice(end) };
 }
