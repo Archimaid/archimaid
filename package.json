@@ -1,6 +1,6 @@
 {
   "name": "archimaid",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ArchiMate for Mermaid: write, validate and render ArchiMate 3.2 diagrams as an external Mermaid diagram type",
   "keywords": [
     "archimate",

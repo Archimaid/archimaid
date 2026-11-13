@@ -2,6 +2,13 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [semantic versioning](https://semver.org/). While the version is 0.x and the header is `archimate-beta`, minor releases may change the syntax.
 
+## 0.1.1
+
+### Project
+
+- The repository moved to the [Archimaid organisation](https://github.com/Archimaid/archimaid), and the npm homepage now links to [archimaid.org](https://archimaid.org).
+- Releases are published from GitHub Actions through npm trusted publishing, with a provenance statement.
+
 ## 0.1.0
 
 First release.
