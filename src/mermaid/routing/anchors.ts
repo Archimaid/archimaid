@@ -7,8 +7,8 @@ import { boxOf, type RoutingNode } from "./types.js";
 
 export interface AnchorRegistry {
   // Whether a new anchor keeps the spacing rule against the anchors already on that side.
-  clear(id: string, box: Box, point: Point, marker: boolean): boolean;
-  reserve(id: string, box: Box, point: Point, marker: boolean): void;
+  readonly clear: (id: string, box: Box, point: Point, marker: boolean) => boolean;
+  readonly reserve: (id: string, box: Box, point: Point, marker: boolean) => void;
 }
 
 export function createAnchorRegistry(): AnchorRegistry {

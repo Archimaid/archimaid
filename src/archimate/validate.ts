@@ -70,6 +70,7 @@ function readAccessMode(token: IToken, report: Report): AccessMode | undefined {
 
 function checkXmlText(value: string, token: IToken, report: Report): string | undefined {
   // XML 1.0 excludes control characters and unpaired UTF-16 surrogate code units.
+  // eslint-disable-next-line no-control-regex -- Allows tab, line feed and carriage return as the only control characters.
   if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {
     report('INVALID_TEXT', token, 'Text contains a character that cannot be written to SVG.');
     return undefined;
@@ -316,7 +317,7 @@ function readLabel(context: ValidationContext, token: IToken | undefined): strin
 function generateRelationshipId(context: ValidationContext, source: string, type: string, target: string): string {
   const base = source + '__' + type + '__' + target;
   let id = base;
-  for (let suffix = 2; context.usedIds.has(id); suffix++) id = base + '_' + suffix;
+  for (let suffix = 2; context.usedIds.has(id); suffix++) id = `${base}_${suffix}`;
   context.usedIds.add(id);
   return id;
 }
@@ -338,8 +339,8 @@ function warnOnRepeatedShorthand(
     'DUPLICATE_RELATIONSHIP',
     statement.source,
     statement.label ?? statement.target,
-    'This relationship repeats the one on line ' + context.diagnostics.line(original.source)
-      + '. Remove the copy, or use the long form with distinct IDs if both are intended.',
+    `This relationship repeats the one on line ${context.diagnostics.line(original.source)}. `
+      + 'Remove the copy, or use the long form with distinct IDs if both are intended.',
   );
 }
 
@@ -457,7 +458,9 @@ export function validateDeclarations(
   declarations: Declaration[],
   diagnostics: DiagnosticCollector,
 ): ArchiMateModel | undefined {
-  const report: Report = (code, token, message) => diagnostics.error(code, token, message);
+  const report: Report = (code, token, message) => {
+    diagnostics.error(code, token, message);
+  };
   const collected = collectDeclarations(declarations, report);
   checkDescriptionTargets(collected, report);
   const notes = buildNotes(collected, report);

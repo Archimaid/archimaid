@@ -26,7 +26,7 @@ export class ArchiMateError extends Error {
     readonly column: number,
     readonly detail: string,
   ) {
-    super('Line ' + line + ', column ' + column + ': ' + detail);
+    super(`Line ${line}, column ${column}: ${detail}`);
     this.name = 'ArchiMateError';
   }
 }

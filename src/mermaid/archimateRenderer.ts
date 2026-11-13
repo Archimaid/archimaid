@@ -26,7 +26,7 @@ export async function renderArchiMate(
 ): Promise<void> {
   const svg = getSvg(id, config);
   const colours = resolveDiagramColours(
-    config, (colour) => browserColour(svg, colour), logger && ((message) => logger.warn(message)),
+    config, (colour) => browserColour(svg, colour), logger && ((message) => { logger.warn(message); }),
   );
   const typography = resolveTypography(config?.theme, config?.themeVariables);
   const parents = new Map(model.nesting?.map(({ child, parent }) => [child, parent]));

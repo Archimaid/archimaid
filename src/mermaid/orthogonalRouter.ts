@@ -29,13 +29,13 @@ interface RouteContext {
   readonly sourceInsideTarget: boolean;
   readonly targetInsideSource: boolean;
   readonly frame: Box | undefined;
-  obstaclesFor(clearance: number): (Bounds & { readonly id: string })[];
-  search(
+  readonly obstaclesFor: (clearance: number) => (Bounds & { readonly id: string })[];
+  readonly search: (
     starts: readonly Port[], ends: readonly Port[], clearance: number,
     separate: { readonly start: boolean; readonly end: boolean }, owner?: string,
-  ): Point[] | undefined;
-  fallback(starts: readonly Port[], ends: readonly Port[]): Point[];
-  record(points: readonly Point[], owner?: string): void;
+  ) => Point[] | undefined;
+  readonly fallback: (starts: readonly Port[], ends: readonly Port[]) => Point[];
+  readonly record: (points: readonly Point[], owner?: string) => void;
 }
 
 interface RoutingState {
@@ -46,8 +46,8 @@ interface RoutingState {
   readonly routes: Map<string, Point[]>;
   readonly bundles: Map<string, RouteBundle>;
   // Spreads each element's ports along its sides in the order relationships ask for them.
-  portFraction(id: string): number;
-  parallelCount(edge: RoutingEdge): number;
+  readonly portFraction: (id: string) => number;
+  readonly parallelCount: (edge: RoutingEdge) => number;
 }
 
 function createRoutingState(
@@ -211,8 +211,10 @@ function routeSingles(state: RoutingState, edges: readonly RoutingEdge[]): (() =
       const apart = { start: true, end: true };
       const together = { start: false, end: false };
       const { comfortable, tight } = clearances;
-      deferred.push(() => record(search(starts, ends, comfortable, apart) ?? search(starts, ends, comfortable, together)
-        ?? search(starts, ends, tight, together) ?? fallback(starts, ends)));
+      deferred.push(() => {
+        record(search(starts, ends, comfortable, apart) ?? search(starts, ends, comfortable, together)
+          ?? search(starts, ends, tight, together) ?? fallback(starts, ends));
+      });
     }
   }
   return deferred;

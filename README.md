@@ -229,6 +229,7 @@ Junctions, relationship-to-relationship endpoints, alternative element figures, 
 
 ```sh
 npm ci
+npm run lint
 npm test
 npx playwright install chromium
 npm run test:browser

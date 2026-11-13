@@ -65,6 +65,7 @@ export const metadata = createToken({
   line_breaks: false,
   start_chars_hint: ['t', 'a'],
 });
+// eslint-disable-next-line no-control-regex -- JSON strings exclude unescaped control characters.
 export const quotedTextPattern = /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"/;
 export const quoted = createToken({
   name: 'QuotedText',
@@ -128,7 +129,7 @@ const connectorTokens = Object.entries(relationshipConnectors)
     const tokenLabel = '"' + glyph + '"';
     const token = glyph === 'o--'
       ? createToken({
-        name: 'Connector' + index,
+        name: `Connector${index}`,
         pattern: { exec: matchAggregation },
         line_breaks: false,
         start_chars_hint: ['o'],
@@ -136,7 +137,7 @@ const connectorTokens = Object.entries(relationshipConnectors)
         categories: connector,
       })
       : createToken({
-        name: 'Connector' + index,
+        name: `Connector${index}`,
         pattern: new RegExp(glyph.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')),
         label: tokenLabel,
         categories: connector,
@@ -152,6 +153,7 @@ export const tokens = [
 ];
 export const lexer = new Lexer(tokens);
 
+// eslint-disable-next-line no-control-regex -- JSON strings exclude unescaped control characters.
 const quotedTextPrefix = /(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*/y;
 
 function describeInvalidQuotedText(text: string, offset: number): string {

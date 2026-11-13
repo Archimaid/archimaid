@@ -274,7 +274,7 @@ test('bundles relationships of one kind from one element and keeps other kinds a
   assert.equal(bundles.has('flow-nearLeft'), false);
   const [first, second] = [routes.get('serving-upperLeft'), routes.get('serving-lowerLeft')];
   assert.deepEqual(first.slice(0, 2).map(({ y }) => y), second.slice(0, 2).map(({ y }) => y), 'members share a trunk');
-  const plain = routeArchitecture(nodes, edges.map(({ bundling, ...rest }) => rest));
+  const plain = routeArchitecture(nodes, edges.map((edge) => ({ ...edge, bundling: undefined })));
   assert.equal(plain.bundles.size, 0, 'relationships without a kind are never bundled');
 });
 

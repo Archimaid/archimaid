@@ -11,13 +11,13 @@ type DiagramDefinition = Awaited<ReturnType<ExternalDiagramDefinition["loader"]>
 const mermaidEntityMarker = /ﬂ°°?(\w+)¶ß/gu;
 
 export interface ArchiMateLogger {
-  warn(message: string): void;
+  readonly warn: (message: string) => void;
 }
 
 export function toLogger(log: unknown): ArchiMateLogger | undefined {
   if (typeof log !== "object" || log === null || !("warn" in log)) return undefined;
   const { warn } = log;
-  return typeof warn === "function" ? { warn: (message) => warn.call(log, message) } : undefined;
+  return typeof warn === "function" ? { warn: (message) => { warn.call(log, message); } } : undefined;
 }
 
 export function createArchimateDiagram(options: Required<ArchiMatePluginOptions>): DiagramDefinition {

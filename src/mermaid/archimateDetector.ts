@@ -27,6 +27,8 @@ export function createArchiMatePlugin({
   if (typeof maxRowWidth !== "number" || Number.isNaN(maxRowWidth) || maxRowWidth <= 0) {
     throw new RangeError("ArchiMate maxRowWidth must be a number greater than 0, or Infinity.");
   }
+  // JavaScript callers can pass any value.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (background !== "theme" && background !== "transparent") {
     throw new RangeError(`ArchiMate background must be "theme" or "transparent".`);
   }

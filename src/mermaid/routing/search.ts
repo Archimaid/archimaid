@@ -53,7 +53,7 @@ interface Grid {
   readonly ys: readonly number[];
   readonly columns: ReadonlyMap<number, number>;
   readonly rows: ReadonlyMap<number, number>;
-  blockedSteps(axis: Axis, across: number): Uint8Array;
+  readonly blockedSteps: (axis: Axis, across: number) => Uint8Array;
 }
 
 // Search only at ports and obstacle boundaries, where an orthogonal turn can clear a shape.

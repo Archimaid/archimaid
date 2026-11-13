@@ -8,8 +8,8 @@ type Tracks = Record<Axis, Map<number, Track[]>>;
 export type RouteCost = (axis: Axis, start: Point, end: Point) => number;
 
 export interface Congestion {
-  cost(axis: Axis, start: Point, end: Point, owner?: string): number;
-  add(axis: Axis, across: number, from: number, to: number, owner?: string): void;
+  readonly cost: (axis: Axis, start: Point, end: Point, owner?: string) => number;
+  readonly add: (axis: Axis, across: number, from: number, to: number, owner?: string) => void;
 }
 
 // Lines are cached for the whole diagram and updated as routes are recorded, because rebuilding them
