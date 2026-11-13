@@ -70,6 +70,10 @@ export function referenceMarkdown() {
     row(['---', '---', '---']),
     ...relationshipTypes.map((type) => row([code(type), relationshipNames[type], connectorsOf(type).join(', ')])),
     '',
+    '## Source and trademark',
+    '',
+    'The element and relationship types follow the [ArchiMate® 3.2 Specification (C226)](https://publications.opengroup.org/standards/archimate/c226) © The Open Group. The descriptions are summaries written for this project, not text from the specification. Archimaid is an independent project and is not affiliated with or endorsed by The Open Group. ArchiMate is a registered trademark of The Open Group in the United States and other countries.',
+    '',
   ].join('\n');
 }
 

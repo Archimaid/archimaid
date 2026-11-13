@@ -1,6 +1,6 @@
 # Archimaid
 
-**ArchiMate® for Mermaid.** Enterprise architecture diagrams as code.
+**Mermaid diagrams for ArchiMate® 3.2.** Enterprise architecture diagrams as code.
 
 [![npm version](https://img.shields.io/npm/v/archimaid)](https://www.npmjs.com/package/archimaid)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -269,4 +269,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an
 - The Open Group's reference cards illustrate element figures and relationship notation. [Reference cards N221](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf)
 - Mermaid provides the external diagram API, and ELK provides the graph layout. [Mermaid diagram guide](https://mermaid.js.org/community/new-diagram.html) · [ELK](https://eclipse.dev/elk/)
 
-The plugin code is licensed under the [MIT License](LICENSE). The ArchiMate specification has [separate licensing terms](https://www.opengroup.co.za/standards). ArchiMate® is a registered trademark of The Open Group. Archimaid is an independent project and is not affiliated with or endorsed by The Open Group.
+The plugin code is licensed under the [MIT License](LICENSE). The maintainer uses the ArchiMate® 3.2 Specification under an [ArchiMate Specification Non-Commercial License](https://www.opengroup.org/archimate-licensed-downloads) from The Open Group. That licence covers the maintainer only and does not extend to users or contributors. Archimaid is an independent project and is not affiliated with or endorsed by The Open Group. ArchiMate is a registered trademark of The Open Group in the United States and other countries.
