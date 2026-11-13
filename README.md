@@ -118,7 +118,7 @@ Use `note id "Text"` for a standalone note or `note id "Text" on elementId` to a
 Build a local package archive with `npm pack` in the plugin checkout. In your host project, install that archive with Mermaid 12.3.0.
 
 ```sh
-npm install mermaid@12.3.0 /path/to/archimate-for-mermaid-0.1.0.tgz
+npm install mermaid@12.3.0 /path/to/archimate-mermaid-0.1.0.tgz
 npm exec -- archimate validate diagram.mmd
 ```
 
@@ -126,7 +126,7 @@ Add a `<div id="diagram"></div>` to your page and run this module through your J
 
 ```js
 import mermaid from 'mermaid';
-import { archimate } from 'archimate-for-mermaid';
+import { archimate } from 'archimate-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 await mermaid.registerExternalDiagrams([archimate]);
@@ -166,7 +166,7 @@ The `archimate` export uses the Modern palette and 24 pixels of outer diagram pa
 
 ```js
 import mermaid from 'mermaid';
-import { createArchiMatePlugin } from 'archimate-for-mermaid';
+import { createArchiMatePlugin } from 'archimate-mermaid';
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
 await mermaid.registerExternalDiagrams([
@@ -188,7 +188,7 @@ Use the language entry point to validate or inspect a diagram in Node.js without
 
 ```js
 import { readFile } from 'node:fs/promises';
-import { parseArchiMate } from 'archimate-for-mermaid/language';
+import { parseArchiMate } from 'archimate-mermaid/language';
 
 const source = await readFile('diagram.mmd', 'utf8');
 const model = parseArchiMate(source);

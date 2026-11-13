@@ -1,5 +1,5 @@
 {
-  "name": "archimate-for-mermaid",
+  "name": "archimate-mermaid",
   "version": "0.1.0",
   "description": "An external Mermaid diagram type for ArchiMate 3.2",
   "keywords": ["archimate", "mermaid", "enterprise-architecture", "diagrams-as-code"],

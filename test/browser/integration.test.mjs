@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { elementTypes } from 'archimate-for-mermaid/language';
+import { elementTypes } from 'archimate-mermaid/language';
 import { renderStandaloneSvg, withMermaidPage } from '../../scripts/mermaid-browser.mjs';
 
 const example = (name) =>
