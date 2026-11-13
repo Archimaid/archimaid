@@ -314,7 +314,7 @@ test('connector shorthand reports unknown endpoints and unknown glyphs at their 
   );
 });
 
-test('infers the nesting relationship when "via" is omitted and rejects ambiguity', () => {
+test('infers the nesting relationship when "via" is omitted, nests visually without one, and rejects ambiguity', () => {
   const declarations = [
     'archimate-beta',
     'element applicationComponent suite "Operations suite"',
@@ -325,15 +325,14 @@ test('infers the nesting relationship when "via" is omitted and rejects ambiguit
   assert.deepEqual(parseArchiMate(declarations.join('\n')).nesting, [
     { child: 'billing', parent: 'suite', relationship: 'suite__composition__billing' },
   ]);
-  for (const [extra, message] of [
-    [['suite o-- billing'], /Several relationships/],
-    [['nest suite in billing'], /No relationship supports/],
-  ]) {
-    assert.throws(
-      () => parseArchiMate([...declarations.slice(0, 3), ...extra, ...declarations.slice(3)].join('\n')),
-      (error) => error instanceof ArchiMateError && error.code === 'INVALID_NESTING' && message.test(error.detail),
-    );
-  }
+  assert.deepEqual(parseArchiMate([...declarations.slice(0, 3), 'nest billing in suite'].join('\n')).nesting, [
+    { child: 'billing', parent: 'suite' },
+  ]);
+  assert.throws(
+    () => parseArchiMate([...declarations.slice(0, 3), 'suite o-- billing', ...declarations.slice(3)].join('\n')),
+    (error) =>
+      error instanceof ArchiMateError && error.code === 'INVALID_NESTING' && /Several relationships/.test(error.detail),
+  );
 });
 
 test('skips a leading frontmatter block and reports later errors at their file line', () => {
@@ -634,7 +633,6 @@ test('validateArchiMate avoids follow-on nesting errors for an invalid relations
     [
       ['UNKNOWN_RELATIONSHIP_TYPE', 4],
       ['UNKNOWN_ELEMENT', 7],
-      ['INVALID_NESTING', 8],
     ],
   );
 });
@@ -704,4 +702,48 @@ test('decodes a fully quoted metadata value like other quoted text', () => {
     code: 'INVALID_TEXT',
     detail: 'Text contains a character that cannot be written to SVG.',
   });
+});
+
+test('an element block nests the elements declared in it, with or without a relationship', () => {
+  const model = parseArchiMate(
+    [
+      'archimate-beta',
+      'element applicationComponent suite "Suite" {',
+      '  element applicationComponent billing "Billing" {',
+      '    element applicationFunction invoice "Invoice"',
+      '  }',
+      '  element applicationComponent orders "Orders"',
+      '  suite *-- orders',
+      '}',
+    ].join('\n'),
+  );
+  assert.deepEqual(
+    model.elements.map(({ id }) => id),
+    ['suite', 'billing', 'invoice', 'orders'],
+  );
+  assert.deepEqual(model.nesting, [
+    { child: 'billing', parent: 'suite' },
+    { child: 'orders', parent: 'suite', relationship: 'suite__composition__orders' },
+    { child: 'invoice', parent: 'billing' },
+  ]);
+
+  const errors = (lines) =>
+    validateArchiMate(['archimate-beta', ...lines].join('\n')).diagnostics.map(({ code, line, message }) => [
+      code,
+      line,
+      message,
+    ]);
+  assert.deepEqual(errors(['element grouping g "G" {', '  element businessActor a "A"']), [
+    ['SYNTAX_ERROR', 3, 'Expected "}" on its own line to close the element block.'],
+  ]);
+  assert.deepEqual(errors(['element grouping g "G" {', '  layout graph', '}']), [
+    [
+      'SYNTAX_ERROR',
+      3,
+      'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, or nest).',
+    ],
+  ]);
+  assert.deepEqual(errors(['element grouping g "G" {', '  element businessActor a "A"', '}', 'nest a in g']), [
+    ['INVALID_NESTING', 5, 'Element "a" already has a nesting parent.'],
+  ]);
 });

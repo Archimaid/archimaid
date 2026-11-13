@@ -13,10 +13,6 @@ function supportsNesting(entry: ArchiMateRelationship, child: string, parent: st
     : parentToChildNestingTypes.has(entry.type) && entry.source === parent && entry.target === child;
 }
 
-function connects(entry: ArchiMateRelationship, first: string, second: string): boolean {
-  return (entry.source === first && entry.target === second) || (entry.source === second && entry.target === first);
-}
-
 export interface NestingContext {
   readonly relationships: readonly ArchiMateRelationship[];
   readonly relationshipsById: ReadonlyMap<string, ArchiMateRelationship>;
@@ -26,11 +22,7 @@ export interface NestingContext {
   readonly report: Report;
 }
 
-function findNestingRelationship(
-  statement: NestingDeclaration,
-  token: IToken,
-  context: NestingContext,
-): ArchiMateRelationship | undefined {
+function findNestingMeaning(statement: NestingDeclaration, token: IToken, context: NestingContext): NestingMeaning {
   const child = statement.child.image;
   const parent = statement.parent.image;
   const found = context.relationshipsById.get(token.image);
@@ -47,36 +39,23 @@ function findNestingRelationship(
     );
     return undefined;
   }
-  return found;
+  return { relationship: found };
 }
 
-function inferNestingRelationship(
-  statement: NestingDeclaration,
-  context: NestingContext,
-): ArchiMateRelationship | undefined {
+type NestingMeaning = { readonly relationship?: ArchiMateRelationship } | undefined;
+
+// The one relationship that supports the nesting gives it meaning. Without one, the nesting is visual only.
+function inferNestingRelationship(statement: NestingDeclaration, context: NestingContext): NestingMeaning {
   const child = statement.child.image;
   const parent = statement.parent.image;
   const candidates = context.relationships.filter((entry) => supportsNesting(entry, child, parent));
   const [only] = candidates;
-  if (only && candidates.length === 1) return only;
-  if (
-    candidates.length === 0 &&
-    context.relationships.some(
-      (entry) => context.invalidRelationshipIds.has(entry.id) && connects(entry, child, parent),
-    )
-  ) {
-    return undefined;
-  }
+  if (candidates.length <= 1) return only ? { relationship: only } : {};
   context.report(
     'INVALID_NESTING',
     statement.parent,
-    candidates.length === 0
-      ? 'No relationship supports nesting "' + child + '" in "' + parent + '".'
-      : 'Several relationships can nest "' +
-          child +
-          '" in "' +
-          parent +
-          '". Declare the intended one with an ID and add "via <relationship-id>".',
+    `Several relationships can nest "${child}" in "${parent}". ` +
+      'Declare the intended one with an ID and add "via <relationship-id>".',
   );
   return undefined;
 }
@@ -109,10 +88,11 @@ export function validateNesting(
       continue;
     }
     parents.set(child, statement);
-    const entry = statement.relationshipId
-      ? findNestingRelationship(statement, statement.relationshipId, context)
+    const meaning = statement.relationshipId
+      ? findNestingMeaning(statement, statement.relationshipId, context)
       : inferNestingRelationship(statement, context);
-    if (entry) nesting.push({ child, parent, relationship: entry.id });
+    if (meaning)
+      nesting.push({ child, parent, ...(meaning.relationship && { relationship: meaning.relationship.id }) });
   }
 
   const checked = new Set<string>();

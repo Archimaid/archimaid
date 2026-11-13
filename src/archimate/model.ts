@@ -26,10 +26,11 @@ export interface ArchiMateNote {
   readonly on?: string;
 }
 
+// Without a relationship, nesting only groups the child visually inside its parent.
 export interface ArchiMateNesting {
   readonly child: string;
   readonly parent: string;
-  readonly relationship: string;
+  readonly relationship?: string;
 }
 
 export interface ArchiMateModel {

@@ -1,9 +1,10 @@
-import { CstParser, EOF } from 'chevrotain';
-import type { CstNode, IRecognitionException, IToken, TokenType } from 'chevrotain';
+import { CstParser, EOF, defaultParserErrorProvider } from 'chevrotain';
+import type { CstNode, IParserErrorMessageProvider, IRecognitionException, IToken, TokenType } from 'chevrotain';
 import {
   access,
   accDescrBlock,
   arrow,
+  closeBrace,
   colon,
   connector,
   description,
@@ -20,11 +21,19 @@ import {
   newline,
   note,
   on,
+  openBrace,
   quoted,
   relationship,
   tokens,
   via,
 } from './lexer.js';
+
+// A rule's own description replaces Chevrotain's "Expecting: … but found: …" wording.
+const errorMessageProvider: IParserErrorMessageProvider = {
+  ...defaultParserErrorProvider,
+  buildNoViableAltMessage: (options) =>
+    options.customUserDescription ?? defaultParserErrorProvider.buildNoViableAltMessage(options),
+};
 
 class ArchiMateParser extends CstParser {
   readonly document = this.RULE('document', () => {
@@ -54,6 +63,22 @@ class ArchiMateParser extends CstParser {
     ]);
   });
 
+  // Diagram settings stay at the top level, so a block holds only model declarations.
+  private readonly blockStatement = this.RULE('blockStatement', () => {
+    this.OR({
+      DEF: [
+        { ALT: () => this.SUBRULE(this.elementStatement) },
+        { ALT: () => this.SUBRULE(this.descriptionStatement) },
+        { ALT: () => this.SUBRULE(this.relationshipStatement) },
+        { ALT: () => this.SUBRULE(this.noteStatement) },
+        { ALT: () => this.SUBRULE(this.nestingStatement) },
+        { ALT: () => this.SUBRULE(this.connectorStatement) },
+      ],
+      ERR_MSG:
+        'Expected "}" or a declaration inside the element block (element, description, relationship, connector, note, or nest).',
+    });
+  });
+
   private readonly connectorStatement = this.RULE('connectorStatement', () => {
     this.CONSUME(identifier, { LABEL: 'source' });
     this.CONSUME(connector, { LABEL: 'connector' });
@@ -79,6 +104,14 @@ class ArchiMateParser extends CstParser {
     this.CONSUME(identifier, { LABEL: 'type' });
     this.CONSUME2(identifier, { LABEL: 'id' });
     this.CONSUME(quoted, { LABEL: 'name' });
+    this.OPTION(() => {
+      this.CONSUME(openBrace);
+      this.MANY(() => {
+        this.CONSUME(newline);
+        this.OPTION2(() => this.SUBRULE(this.blockStatement));
+      });
+      this.CONSUME(closeBrace, { ERR_MSG: 'Expected "}" on its own line to close the element block.' });
+    });
   });
 
   private readonly descriptionStatement = this.RULE('descriptionStatement', () => {
@@ -134,7 +167,7 @@ class ArchiMateParser extends CstParser {
   });
 
   constructor() {
-    super(tokens);
+    super(tokens, { errorMessageProvider });
     this.performSelfAnalysis();
   }
 }
@@ -206,13 +239,27 @@ class DeclarationVisitor extends BaseVisitor {
     return { kind: 'layout', value: requiredToken(ctx, 'value') };
   }
 
-  elementStatement(ctx: Context): Declaration {
-    return {
+  // A block nests every element declared directly inside it in the enclosing element.
+  elementStatement(ctx: Context): Declaration[] {
+    const parent = requiredToken(ctx, 'id');
+    const declared: Declaration = {
       kind: 'element',
       type: requiredToken(ctx, 'type'),
-      id: requiredToken(ctx, 'id'),
+      id: parent,
       name: requiredToken(ctx, 'name'),
     };
+    const body = (ctx.blockStatement ?? []).map((node) => {
+      if (!('children' in node)) throw new Error('Invalid ArchiMate parse tree.');
+      return [this.visit(node)].flat();
+    });
+    const nesting = body.flatMap(([first]): Declaration[] =>
+      first?.kind === 'element' ? [{ kind: 'nesting', child: first.id, parent }] : [],
+    );
+    return [declared, ...nesting, ...body.flat()];
+  }
+
+  blockStatement(ctx: Context): Declaration | Declaration[] {
+    return this.statement(ctx);
   }
 
   descriptionStatement(ctx: Context): Declaration {
