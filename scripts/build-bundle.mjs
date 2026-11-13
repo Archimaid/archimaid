@@ -7,7 +7,7 @@ const outdir = fileURLToPath(new URL('dist/bundle/', root));
 
 await rm(outdir, { recursive: true, force: true });
 await build({
-  entryPoints: { 'archimate-mermaid.esm.min': fileURLToPath(new URL('dist/index.js', root)) },
+  entryPoints: { 'archi-mermaid.esm.min': fileURLToPath(new URL('dist/index.js', root)) },
   outdir,
   outExtension: { '.js': '.mjs' },
   chunkNames: 'chunks/[name]-[hash]',

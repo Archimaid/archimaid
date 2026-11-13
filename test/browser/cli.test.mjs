@@ -9,7 +9,7 @@ import test from 'node:test';
 const cli = fileURLToPath(new URL('../../dist/cli.js', import.meta.url));
 const example = fileURLToPath(new URL('../../examples/order-management.mmd', import.meta.url));
 
-test('archimate render draws a diagram from the prebuilt browser bundle, without a bundler', () => {
+test('archi-mermaid render draws a diagram from the prebuilt browser bundle, without a bundler', () => {
   const directory = mkdtempSync(join(tmpdir(), 'archimate-render-'));
   try {
     const output = join(directory, 'diagram.svg');
