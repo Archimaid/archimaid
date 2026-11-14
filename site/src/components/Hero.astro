@@ -1,10 +1,12 @@
 ---
 import diagramSvg from '../diagrams/order-fulfilment.svg?raw';
 import diagramSource from '../diagrams/order-fulfilment.mmd?raw';
+import { playgroundLink } from '../lib/playground';
 import CompareSlider from './CompareSlider.astro';
 import FloatingElements from './FloatingElements.astro';
 import InstallCommand from './InstallCommand.astro';
 
+const editLink = playgroundLink(diagramSource);
 const lineCount = diagramSource.trimEnd().split('\n').length;
 const description =
   'Framework layout of an order fulfilment diagram. The Customer is assigned to Fulfil order, which realizes the requirement Ship within 24h, noted as measured from payment to dispatch. The Order API serves Fulfil order and is realized by the Order service, which writes the Order data object. Hosting serves the Order service and is realized by the Kubernetes node.';
@@ -25,8 +27,8 @@ const description =
       and render them wherever Mermaid runs.
     </p>
     <div class="actions">
-      <a class="button" href="#how" style="background: var(--application)">
-        Get started
+      <a class="button" href={editLink} style="background: var(--application)">
+        Try it in your browser
         <svg
           width="18"
           height="18"
@@ -57,7 +59,10 @@ const description =
       stroke-linejoin="round"
       aria-hidden="true"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"></path></svg
     >
-    Drag the handle: {lineCount} lines of text on one side, the diagram they draw on the other.
+    <span>
+      Drag the handle: {lineCount} lines of text on one side, the diagram they draw on the other.
+      <a href={editLink}>Edit this diagram in the playground</a>
+    </span>
   </p>
 </section>
 
