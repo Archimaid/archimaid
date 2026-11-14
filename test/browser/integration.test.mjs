@@ -29,7 +29,7 @@ function render(page, id, source) {
         viewBox: document.documentElement.getAttribute('viewBox'),
         roleColour: outline('clerk'),
         applicationColour: outline('oms'),
-        assignment: line('clerk_to_fulfil'),
+        assignment: line('clerk__assignment__fulfil'),
         access: line('manage__access__order'),
         markerIds: Array.from(document.querySelectorAll('marker'), (marker) => marker.id),
       };
@@ -49,7 +49,7 @@ test('Mermaid registers, validates and renders ArchiMate diagrams in the same ho
     assert.match(first.assignment.start, /-filledDot\)$/);
     assert.match(first.assignment.end, /-filledArrow\)$/);
 
-    const invalid = fulfilment.replace('clerk -> fulfil', 'clerk -> missing');
+    const invalid = fulfilment.replace('clerk @==> fulfil', 'clerk @==> missing');
     await assert.rejects(
       page.evaluate(async (source) => {
         const mermaid = await globalThis.archimateHost;

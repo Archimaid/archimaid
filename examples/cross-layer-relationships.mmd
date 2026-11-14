@@ -11,11 +11,12 @@ archimate-beta
   element businessService claims_registration "Claims\nRegistration"
   element businessService claims_acceptance "Claims\nAcceptance"
   element businessService claims_payment "Claims Payment"
-  element businessProcess process_claims "Process Claims"
-  element businessProcess register "Register"
-  element businessProcess accept "Accept"
-  element businessProcess adjudicate "Adjudicate"
-  element businessProcess pay "Pay"
+  element businessProcess process_claims "Process Claims" {
+    element businessProcess register "Register"
+    element businessProcess accept "Accept"
+    element businessProcess adjudicate "Adjudicate"
+    element businessProcess pay "Pay"
+  }
   element businessObject customer_information "Customer\nInformation"
 
   element applicationService customer_data_management "Customer Data\nManagement"
@@ -33,47 +34,43 @@ archimate-beta
   element systemSoftware application_server "Application Server"
   element device blade_system "Blade System"
 
-  relationship composition process_includes_register process_claims -> register
-  relationship composition process_includes_accept process_claims -> accept
-  relationship composition process_includes_adjudicate process_claims -> adjudicate
-  relationship composition process_includes_pay process_claims -> pay
-  nest register in process_claims via process_includes_register
-  nest accept in process_claims via process_includes_accept
-  nest adjudicate in process_claims via process_includes_adjudicate
-  nest pay in process_claims via process_includes_pay
+  process_claims *-- register
+  process_claims *-- accept
+  process_claims *-- adjudicate
+  process_claims *-- pay
 
-  relationship triggering register_then_accept register -> accept
-  relationship triggering accept_then_adjudicate accept -> adjudicate
-  relationship triggering adjudicate_then_pay adjudicate -> pay
+  register ==> accept
+  accept ==> adjudicate
+  adjudicate ==> pay
 
-  relationship assignment customer_plays_insurant customer -> insurant
-  relationship assignment archisurance_plays_insurer archisurance -> insurer
-  relationship assignment insurer_handles_claims insurer -> process_claims
-  relationship realization register_realizes_registration register -> claims_registration
-  relationship realization accept_realizes_acceptance accept -> claims_acceptance
-  relationship realization pay_realizes_payment pay -> claims_payment
-  relationship serving registration_serves_insurant claims_registration -> insurant
-  relationship serving acceptance_serves_insurant claims_acceptance -> insurant
-  relationship serving payment_serves_insurant claims_payment -> insurant
-  relationship access register_writes_customer_information register -> customer_information access write
+  customer @==> insurant
+  archisurance @==> insurer
+  insurer @==> process_claims
+  register ..|> claims_registration
+  accept ..|> claims_acceptance
+  pay ..|> claims_payment
+  claims_registration --> insurant
+  claims_acceptance --> insurant
+  claims_payment --> insurant
+  register ..> customer_information
 
-  relationship realization crm_realizes_customer_management crm_system -> customer_data_management
-  relationship realization finance_realizes_payment_processing financial_application -> payment_processing
-  relationship realization data_realizes_information customer_data -> customer_information
-  relationship serving customer_management_supports_register customer_data_management -> register
-  relationship serving payment_processing_supports_pay payment_processing -> pay
-  relationship access crm_writes_customer_data crm_system -> customer_data access write
+  crm_system ..|> customer_data_management
+  financial_application ..|> payment_processing
+  customer_data ..|> customer_information
+  customer_data_management --> register
+  payment_processing --> pay
+  crm_system ..> customer_data
 
-  relationship assignment blade_hosts_database_system blade_system -> database_management_system
-  relationship assignment blade_hosts_application_server blade_system -> application_server
-  relationship assignment database_system_hosts_java_archive database_management_system -> database_access_archive
-  relationship assignment application_server_hosts_web_archive application_server -> financial_application_archive
-  relationship realization database_system_realizes_database_service database_management_system -> database_management
-  relationship realization application_server_realizes_hosting application_server -> application_hosting
-  relationship realization tables_realize_customer_data customer_database_tables -> customer_data
-  relationship realization java_archive_realizes_crm database_access_archive -> crm_system
-  relationship realization web_archive_realizes_finance financial_application_archive -> financial_application
-  relationship serving database_management_supports_crm database_management -> crm_system
-  relationship serving hosting_supports_crm application_hosting -> crm_system
-  relationship serving hosting_supports_finance application_hosting -> financial_application
-  relationship access database_management_writes_tables database_management -> customer_database_tables access write
+  blade_system @==> database_management_system
+  blade_system @==> application_server
+  database_management_system @==> database_access_archive
+  application_server @==> financial_application_archive
+  database_management_system ..|> database_management
+  application_server ..|> application_hosting
+  customer_database_tables ..|> customer_data
+  database_access_archive ..|> crm_system
+  financial_application_archive ..|> financial_application
+  database_management --> crm_system
+  application_hosting --> crm_system
+  application_hosting --> financial_application
+  database_management ..> customer_database_tables

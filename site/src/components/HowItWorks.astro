@@ -4,7 +4,7 @@ import { project } from '../lib/project';
 import CodeLines from './CodeLines.astro';
 
 const writeExample = `element businessActor customer "Customer"
-relationship assignment performs customer -> fulfil`;
+customer @==> fulfil`;
 
 const misspeltFile = 'fulfilment.mmd';
 const misspeltSource = `archimate-beta
@@ -28,8 +28,8 @@ const cli = project.packageName;
       <span class="label">1 · Write</span>
       <h3>Plain text, in any Markdown file</h3>
       <p>
-        Declare elements, then relate them in long form with an ID, or with short connectors that look like the lines they
-        draw. Nest elements in blocks and attach notes and links.
+        Declare elements, then relate them with short connectors that look like the lines they draw, or in long form when
+        you want to name the relationship. Nest elements in blocks and attach notes and links.
       </p>
       <pre class="code-block"><CodeLines source={writeExample} /></pre>
     </li>
