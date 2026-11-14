@@ -1,0 +1,121 @@
+---
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import LayerStripe from '../components/LayerStripe.astro';
+import Base from '../layouts/Base.astro';
+import { project } from '../lib/project';
+
+const updated = '14 November 2026';
+---
+
+<Base
+  title={`Privacy policy · ${project.name}`}
+  description={`How ${project.name}, its website, playground, npm package and Claude Code plugin handle your data.`}
+>
+  <LayerStripe />
+  <Header />
+  <main class="container policy">
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated {updated}</p>
+
+    <p class="lead">
+      {project.name} doesn’t collect, store or sell personal data. There are no accounts, no analytics, no tracking
+      cookies and no advertising in any part of the project.
+    </p>
+
+    <h2>This website (archimaid.org)</h2>
+    <p>
+      The site is static. It sets no cookies, runs no analytics and loads no third-party scripts or fonts. It is hosted
+      on Cloudflare, which processes technical request data, such as IP addresses, to deliver and protect the site. See
+      the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>.
+    </p>
+
+    <h2>The playground (try.archimaid.org)</h2>
+    <p>
+      Diagrams are parsed and rendered in your browser. Your diagram and your theme, notation and export preferences are saved in your
+      browser’s local storage, so they never leave your device. Clear them by clearing the site data for
+      try.archimaid.org.
+    </p>
+    <p>
+      A share link holds your diagram in the part of the URL after <code>#</code>. Browsers don’t send that part to the
+      server, so the diagram reaches only the people you send the link to. The playground is also hosted on Cloudflare.
+    </p>
+
+    <h2>The npm package and command-line tool</h2>
+    <p>
+      The <code>{project.packageName}</code> package and the <code>archimaid</code> command run on your own machine.
+      Validating and rendering diagrams makes no network requests and sends no telemetry. Installing the package
+      downloads it from the npm registry, which is covered by the{' '}
+      <a href="https://docs.npmjs.com/policies/privacy">npm privacy policy</a>.
+    </p>
+
+    <h2>The Claude Code plugin</h2>
+    <p>
+      The <a href="https://github.com/Archimaid/claude-plugin">{project.name} plugin</a> contains instructions and
+      commands only. It has no hooks, no MCP servers and no telemetry, and it doesn’t read credentials. When Claude
+      validates a diagram, it runs <code>npx archimaid validate</code> on your machine with your approval, which
+      downloads the package from npm as described above. What you share with Claude is covered by{' '}
+      <a href="https://www.anthropic.com/legal/privacy">Anthropic’s privacy policy</a>.
+    </p>
+
+    <h2>GitHub</h2>
+    <p>
+      Issues, discussions and pull requests on <a href={project.repository}>GitHub</a> are public and covered by the{' '}
+      <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy
+      statement</a>.
+    </p>
+
+    <h2>Changes and contact</h2>
+    <p>
+      Changes to this policy are published on this page and in the{' '}
+      <a href={`${project.repository}/commits/main/site/src/pages/privacy.astro`}>repository history</a>. For questions,{' '}
+      <a href={project.newIssue}>open an issue</a>, or report a concern privately through the repository’s{' '}
+      <a href={`${project.repository}/security`}>Security tab</a>.
+    </p>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .policy {
+    max-width: 760px;
+    padding-block: 96px 40px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  h2 {
+    margin: 48px 0 12px;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0 0 16px;
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--ink-muted);
+  }
+
+  .updated {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--ink-faint);
+  }
+
+  .lead {
+    margin-top: 32px;
+    font-size: 20px;
+    color: var(--ink);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+</style>
