@@ -4,18 +4,17 @@ archimate-beta
   accDescr: An order management suite contains two application components. Notes annotate the suite and its handoff.
 
   element applicationComponent storefront "Storefront"
-  element applicationComponent suite "Order management suite"
-  element applicationComponent orders "Order processing"
-  element applicationComponent billing "Billing"
+  element applicationComponent suite "Order management suite" {
+    element applicationComponent orders "Order processing"
+    element applicationComponent billing "Billing"
+  }
 
-  relationship composition includes_orders suite -> orders
-  relationship composition includes_billing suite -> billing
-  nest orders in suite via includes_orders
-  nest billing in suite via includes_billing
+  suite *-- orders
+  suite *-- billing
 
-  relationship flow order_intake storefront -> orders
-  relationship flow order_to_bill orders -> billing
+  storefront -.=> orders
+  orders -.=> billing
 
   note review "Confirm retry behaviour\nwith the billing team" on suite
   note handoff "Billing receives the order\nafter payment is confirmed."
-  relationship association billing_context billing -> handoff
+  billing --- handoff

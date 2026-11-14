@@ -39,7 +39,7 @@ npx archimaid render diagram.mmd diagram.svg
 
 ## Examples
 
-A diagram starts with `archimate-beta`. Give each element and relationship a stable ID, then reference those IDs when connecting or nesting elements.
+A diagram starts with `archimate-beta`. Give each element a stable ID, then connect elements by their IDs.
 
 ```text
 archimate-beta
@@ -49,14 +49,14 @@ archimate-beta
 
   element businessRole clerk "Fulfilment clerk"
   element businessProcess fulfil "Fulfil order"
-  relationship assignment clerk_to_fulfil clerk -> fulfil
+  clerk @==> fulfil
 ```
 
-Add element details with `description elementId "Text"` and a visible relationship label with `label "Text"` after the relationship's endpoints and options.
+Add element details with `description elementId "Text"`.
 
-### Relationship shorthand
+### Relationships
 
-Write `source <connector> target` to declare a relationship without an ID. Add `: "Text"` for a visible label. The left endpoint is always the model source, so `manage <.. order` means *manage reads order*. The connector mirrors the rendered markers.
+Write `source <connector> target` to declare a relationship. Add `: "Text"` for a visible label. The left endpoint is always the model source, so `manage <.. order` means *manage reads order*. The connector mirrors the rendered markers.
 
 | Relationship | Connector | Long form equivalent |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ Write `source <connector> target` to declare a relationship without an ID. Add `
 | Flow | `a -.=> b` | `relationship flow id a -> b` |
 | Specialization | `a --\|> b` | `relationship specialization id a -> b` |
 
-`..` is a dotted line and `-.` a dashed one. `>` is an open arrowhead, `=>` a filled one, `|>` a hollow triangle, and `/` the single barb of a directed Association. Shorthand relationships receive generated IDs of the form `source__type__target`. Use the long form when another declaration must reference the relationship by ID.
+`..` is a dotted line and `-.` a dashed one. `>` is an open arrowhead, `=>` a filled one, `|>` a hollow triangle, and `/` the single barb of a directed Association. Shorthand relationships receive generated IDs of the form `source__type__target`. Use the long form, `relationship <type> <id> <source> -> <target>`, when you want to choose the ID, for example to name the relationship in `nest child in parent via id`. In the long form, a visible label is written as `label "Text"` after the endpoints and options.
 
 | Example | What it shows | Files |
 | --- | --- | --- |

@@ -114,14 +114,14 @@ test('the default layout aligns the claims branches and preserves relationship e
       [x - left, x - right, y - top, y - bottom].some((offset) => Math.abs(offset) < 0.01);
     assert.equal(Object.keys(paths).length, 32);
     for (const id of [
-      'register_then_accept',
-      'accept_then_adjudicate',
-      'adjudicate_then_pay',
-      'register_realizes_registration',
-      'accept_realizes_acceptance',
-      'pay_realizes_payment',
-      'customer_management_supports_register',
-      'payment_processing_supports_pay',
+      'register__triggering__accept',
+      'accept__triggering__adjudicate',
+      'adjudicate__triggering__pay',
+      'register__realization__claims_registration',
+      'accept__realization__claims_acceptance',
+      'pay__realization__claims_payment',
+      'customer_data_management__serving__register',
+      'payment_processing__serving__pay',
     ]) {
       assert.equal(paths[id].length, 2, id);
     }

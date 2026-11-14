@@ -12,12 +12,12 @@ archimate-beta
   element technologyService hosting "Hosting"
   element node cluster "Kubernetes"
 
-  relationship realization meets fulfil -> ship
-  relationship assignment performs customer -> fulfil
-  relationship serving supports api -> fulfil
-  relationship realization provides oms -> api
-  relationship access writes oms -> order access write
-  relationship serving runs hosting -> oms
-  relationship realization hosts cluster -> hosting
+  fulfil ..|> ship
+  customer @==> fulfil
+  api --> fulfil
+  oms ..|> api
+  oms ..> order
+  hosting --> oms
+  cluster ..|> hosting
 
   note sla "Measured from payment\nto dispatch" on ship
