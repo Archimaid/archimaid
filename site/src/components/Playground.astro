@@ -65,6 +65,10 @@ const capabilities = [
           ))
         }
       </ul>
+      <p class="designer-note">
+        Prefer drawing to typing? <a href={project.designer}>Archimaid Designer</a> lets you drag elements onto a canvas,
+        connect them and move them, and writes the text for you.
+      </p>
     </div>
 
     <div class="launcher" data-reveal style="--reveal-delay: 120ms">
@@ -104,6 +108,19 @@ const capabilities = [
 </section>
 
 <style>
+  .designer-note {
+    margin: 28px 0 0;
+    padding: 14px 18px;
+    border: 2px dashed var(--ink);
+    border-radius: 16px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .designer-note a {
+    font-weight: 700;
+  }
+
   .layout {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr));

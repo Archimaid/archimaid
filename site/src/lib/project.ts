@@ -24,4 +24,5 @@ export const project = {
   readme: `${repository}#readme`,
   npm: `https://www.npmjs.com/package/${packageJson.name}`,
   playground: 'https://try.archimaid.org',
+  designer: 'https://design.archimaid.org',
 } as const;
