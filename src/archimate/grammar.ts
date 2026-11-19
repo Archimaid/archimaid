@@ -4,6 +4,7 @@ import {
   access,
   accDescrBlock,
   arrow,
+  at,
   click,
   closeBrace,
   colon,
@@ -12,10 +13,12 @@ import {
   directed,
   direction,
   element,
+  from,
   header,
   href,
   identifier,
   inside,
+  integer,
   label,
   layout,
   metadata,
@@ -24,8 +27,12 @@ import {
   note,
   on,
   openBrace,
+  positions,
   quoted,
   relationship,
+  size,
+  sizeValue,
+  to,
   tokens,
   via,
 } from './lexer.js';
@@ -47,7 +54,7 @@ class ArchiMateParser extends CstParser {
     });
     this.CONSUME(EOF, {
       ERR_MSG:
-        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, click, or metadata).',
+        'Expected a new line or an ArchiMate declaration (layout, direction, element, description, relationship, connector, note, nest, click, positions, or metadata).',
     });
   });
 
@@ -62,6 +69,7 @@ class ArchiMateParser extends CstParser {
       { ALT: () => this.SUBRULE(this.nestingStatement) },
       { ALT: () => this.SUBRULE(this.clickStatement) },
       { ALT: () => this.SUBRULE(this.metadataStatement) },
+      { ALT: () => this.SUBRULE(this.positionsStatement) },
       { ALT: () => this.SUBRULE(this.connectorStatement) },
     ]);
   });
@@ -179,6 +187,67 @@ class ArchiMateParser extends CstParser {
     });
   });
 
+  // Layout stays in one block at the top level, so readers can skip it as a whole.
+  private readonly positionsStatement = this.RULE('positionsStatement', () => {
+    this.CONSUME(positions);
+    this.CONSUME(openBrace);
+    this.MANY(() => {
+      this.CONSUME(newline);
+      this.OPTION(() => this.SUBRULE(this.positionEntry));
+    });
+    this.CONSUME(closeBrace, { ERR_MSG: 'Expected "}" on its own line to close the positions block.' });
+  });
+
+  private readonly positionEntry = this.RULE('positionEntry', () => {
+    this.CONSUME(identifier, { LABEL: 'subject' });
+    this.OR({
+      DEF: [
+        {
+          ALT: () => {
+            this.CONSUME(at);
+            this.CONSUME(integer, { LABEL: 'x' });
+            this.CONSUME2(integer, { LABEL: 'y' });
+            this.OPTION(() => {
+              this.CONSUME(size);
+              this.CONSUME(sizeValue, { LABEL: 'size' });
+            });
+          },
+        },
+        {
+          ALT: () => {
+            this.CONSUME(connector, { LABEL: 'connector' });
+            this.CONSUME2(identifier, { LABEL: 'target' });
+            this.SUBRULE(this.anchorSides);
+          },
+        },
+        { ALT: () => this.SUBRULE2(this.anchorSides) },
+      ],
+      ERR_MSG:
+        'Expected "at x y" after an element ID, or "from" or "to" sides after a relationship, inside the positions block.',
+    });
+  });
+
+  private readonly anchorSides = this.RULE('anchorSides', () => {
+    this.OR([
+      {
+        ALT: () => {
+          this.CONSUME(from);
+          this.CONSUME(identifier, { LABEL: 'sourceSide' });
+          this.OPTION(() => {
+            this.CONSUME(to);
+            this.CONSUME2(identifier, { LABEL: 'targetSide' });
+          });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME2(to);
+          this.CONSUME3(identifier, { LABEL: 'targetSide' });
+        },
+      },
+    ]);
+  });
+
   constructor() {
     super(tokens, { errorMessageProvider });
     this.performSelfAnalysis();
@@ -195,6 +264,7 @@ export type Declaration =
   | { kind: 'note'; id: IToken; text: IToken; anchor?: IToken }
   | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId?: IToken }
   | { kind: 'click'; id: IToken; url: IToken; tooltip?: IToken; target?: IToken }
+  | PositionsDeclaration
   | RelationshipDeclaration
   | ConnectorDeclaration;
 
@@ -215,6 +285,32 @@ export interface ConnectorDeclaration {
   connector: IToken;
   target: IToken;
   label?: IToken;
+}
+
+export interface PositionsDeclaration {
+  kind: 'positions';
+  keyword: IToken;
+  entries: PositionEntry[];
+}
+
+export type PositionEntry = ElementPositionEntry | AnchorEntry;
+
+export interface ElementPositionEntry {
+  kind: 'elementPosition';
+  id: IToken;
+  x: IToken;
+  y: IToken;
+  size?: IToken;
+}
+
+// The relationship is named by its ID, or by its endpoints and connector as in the shorthand.
+export interface AnchorEntry {
+  kind: 'anchor';
+  subject: IToken;
+  connector?: IToken;
+  target?: IToken;
+  sourceSide?: IToken;
+  targetSide?: IToken;
 }
 
 function requiredToken(ctx: Context, name: string): IToken {
@@ -323,6 +419,42 @@ class DeclarationVisitor extends BaseVisitor {
       id: requiredToken(ctx, 'id'),
       text: requiredToken(ctx, 'text'),
       ...(ctx.anchor && { anchor: requiredToken(ctx, 'anchor') }),
+    };
+  }
+
+  positionsStatement(ctx: Context): Declaration {
+    const entries = (ctx.positionEntry ?? []).map((node) => {
+      if (!('children' in node)) throw new Error('Invalid ArchiMate parse tree.');
+      return this.positionEntry(node.children);
+    });
+    return { kind: 'positions', keyword: requiredToken(ctx, 'Positions'), entries };
+  }
+
+  positionEntry(ctx: Context): PositionEntry {
+    const subject = requiredToken(ctx, 'subject');
+    if (ctx.x) {
+      return {
+        kind: 'elementPosition',
+        id: subject,
+        x: requiredToken(ctx, 'x'),
+        y: requiredToken(ctx, 'y'),
+        ...(ctx.size && { size: requiredToken(ctx, 'size') }),
+      };
+    }
+    const sides = ctx.anchorSides?.[0];
+    if (!sides || !('children' in sides)) throw new Error('Incomplete ArchiMate anchor.');
+    return {
+      kind: 'anchor',
+      subject,
+      ...(ctx.connector && { connector: requiredToken(ctx, 'connector'), target: requiredToken(ctx, 'target') }),
+      ...this.anchorSides(sides.children),
+    };
+  }
+
+  anchorSides(ctx: Context): Pick<AnchorEntry, 'sourceSide' | 'targetSide'> {
+    return {
+      ...(ctx.sourceSide && { sourceSide: requiredToken(ctx, 'sourceSide') }),
+      ...(ctx.targetSide && { targetSide: requiredToken(ctx, 'targetSide') }),
     };
   }
 

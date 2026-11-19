@@ -18,9 +18,11 @@ import {
   otherAxis,
   pointDistance,
   ports,
+  portSide,
   sidePort,
   type Bounds,
   type Port,
+  type Side,
 } from './routing/primitives.js';
 import { routeBetween } from './routing/search.js';
 import { loopCandidates, straightRoute } from './routing/shapes.js';
@@ -217,6 +219,13 @@ function prepare(state: RoutingState, edge: RoutingEdge): RouteContext {
   };
 }
 
+// An anchored side the ports cannot offer, such as the top inside a container, leaves the router free to choose.
+function onSide(candidates: readonly Port[], box: Box, side: Side | undefined): readonly Port[] {
+  if (!side) return candidates;
+  const chosen = candidates.filter((port) => portSide(box, port.anchor) === side);
+  return chosen.length ? chosen : candidates;
+}
+
 // Self-relationships and straight connections are recorded at once; the rest wait until the bundles are in place.
 function routeSingles(state: RoutingState, edges: readonly RoutingEdge[]): (() => void)[] {
   const { anchors, congestion, portFraction } = state;
@@ -239,8 +248,16 @@ function routeSingles(state: RoutingState, edges: readonly RoutingEdge[]): (() =
     const nestedEdge = sourceInsideTarget || targetInsideSource;
     const sourcePorts = ports(sourceBox, portFraction(edge.source), targetInsideSource);
     const targetPorts = ports(targetBox, portFraction(edge.target), sourceInsideTarget);
-    const starts = nestedEdge ? sourcePorts : facing(sourcePorts, sourceBox, targetBox);
-    const ends = nestedEdge ? targetPorts : facing(targetPorts, targetBox, sourceBox);
+    const starts = onSide(
+      nestedEdge ? sourcePorts : facing(sourcePorts, sourceBox, targetBox),
+      sourceBox,
+      edge.sourceSide,
+    );
+    const ends = onSide(
+      nestedEdge ? targetPorts : facing(targetPorts, targetBox, sourceBox),
+      targetBox,
+      edge.targetSide,
+    );
     if (edge.source === edge.target) {
       const lane = loops.get(edge.source) ?? 0;
       loops.set(edge.source, lane + 1);
@@ -277,6 +294,8 @@ function routeSingles(state: RoutingState, edges: readonly RoutingEdge[]): (() =
             obstaclesFor(clearances.comfortable).filter(({ id }) => id !== edge.source && id !== edge.target),
             congestion.cost,
             (from, to) =>
+              (!edge.sourceSide || portSide(sourceBox, from) === edge.sourceSide) &&
+              (!edge.targetSide || portSide(targetBox, to) === edge.targetSide) &&
               anchors.clear(edge.source, sourceBox, from, sourceMarker) &&
               anchors.clear(edge.target, targetBox, to, targetMarker),
             { gap: sourceMarker || targetMarker ? markerGap : trackGap, parallel: state.parallelCount(edge) },

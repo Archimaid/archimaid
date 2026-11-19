@@ -563,7 +563,7 @@ test('replaces parser internals with plain messages and suggestions', () => {
     [
       'archimate-beta\nlayout framwork',
       'INVALID_LAYOUT',
-      'Expected layout architecture, framework, or graph. Did you mean "framework"?',
+      'Expected layout architecture, framework, graph, or custom. Did you mean "framework"?',
     ],
   ]) {
     assert.throws(() => parseArchiMate(source), { code, detail });
@@ -778,4 +778,70 @@ test('click attaches a link and tooltip to an element, and rejects unsafe or unk
     const [diagnostic] = validateArchiMate(['archimate-beta', element, click].join('\n')).diagnostics;
     assert.deepEqual([diagnostic?.code, diagnostic?.message.replace(/ Did you mean .*$/, '')], [code, message], click);
   }
+});
+
+const customLayout = (positions) => `archimate-beta
+  layout custom
+  element businessRole clerk "Clerk"
+  element businessProcess fulfil "Fulfil"
+  element applicationComponent oms "Orders" {
+    element applicationComponent billing "Billing"
+  }
+  clerk @==> fulfil
+  relationship serving serves oms -> fulfil
+  positions {
+${positions}
+  }`;
+
+test('reads positions and anchors in custom layout', () => {
+  const { model, diagnostics } = validateArchiMate(
+    customLayout(
+      '    clerk at 0 0\n    fulfil at 10 0 size 9x3\n    oms at 0 8\n    billing at 1 0\n' +
+        '    clerk @==> fulfil from R to L\n    serves to B',
+    ),
+  );
+  assert.deepEqual(diagnostics, []);
+  assert.equal(model.layout, 'custom');
+  assert.deepEqual(model.positions, [
+    { id: 'clerk', x: 0, y: 0 },
+    { id: 'fulfil', x: 10, y: 0, width: 9, height: 3 },
+    { id: 'oms', x: 0, y: 8 },
+    { id: 'billing', x: 1, y: 0 },
+  ]);
+  assert.deepEqual(model.anchors, [
+    { relationship: 'clerk__assignment__fulfil', source: 'R', target: 'L' },
+    { relationship: 'serves', target: 'B' },
+  ]);
+});
+
+test('warns about unknown, missing, ignored and crowded positions without failing', () => {
+  const { model, diagnostics } = validateArchiMate(
+    customLayout('    ghost at 0 0\n    clerk at 0 0\n    fulfil at 8 0\n    billing at 1 0'),
+  );
+  assert.ok(model);
+  assert.deepEqual(
+    diagnostics.map(({ severity, code, line }) => [severity, code, line]),
+    [
+      ['warning', 'MISSING_POSITION', 5],
+      ['warning', 'UNKNOWN_POSITION_TARGET', 11],
+      ['warning', 'CROWDED_POSITION', 13],
+      ['warning', 'IGNORED_POSITION', 14],
+    ],
+  );
+});
+
+test('other layouts ignore positions but still reject invalid ones', () => {
+  const graph = customLayout('    clerk at 0 0').replace('layout custom', 'layout graph');
+  assert.deepEqual(validateArchiMate(graph).diagnostics, []);
+  const errors = validateArchiMate(
+    customLayout('    clerk at 0 0\n    clerk at 1 1\n    clerk from X\n    oms at 0 0 size 0x2'),
+  )
+    .diagnostics.filter(({ severity }) => severity === 'error')
+    .map(({ code, message }) => [code, message]);
+  assert.deepEqual(errors, [
+    ['DUPLICATE_DECLARATION', 'Position is already set for "clerk".'],
+    ['INVALID_POSITION', '"clerk" is not a relationship. Write "clerk at x y" to position it.'],
+    ['INVALID_POSITION', 'Expected side T, R, B, or L.'],
+    ['INVALID_POSITION', 'Size must be at least 1x1.'],
+  ]);
 });

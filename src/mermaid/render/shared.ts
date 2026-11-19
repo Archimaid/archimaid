@@ -100,8 +100,9 @@ export function positioned(node: ElkNode): PositionedNode {
   return { x, y, width, height };
 }
 
+// Custom layout pins elements instead of placing them, but routes and labels them as architecture layout does.
 export function usesArchitectureLayout(model: ArchiMateModel): boolean {
-  return model.layout === 'architecture' || model.layout === 'framework';
+  return model.layout === 'architecture' || model.layout === 'framework' || model.layout === 'custom';
 }
 
 // Relationships leave upward in BT, so attached notes sit on the entry side, mirroring TB.

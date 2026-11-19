@@ -94,6 +94,8 @@ export const quoted = createToken({
 });
 export const arrow = createToken({ name: 'Arrow', pattern: /->/, label: '"->"' });
 export const colon = createToken({ name: 'Colon', pattern: /:/, label: '":"' });
+export const sizeValue = createToken({ name: 'SizeValue', pattern: /\d+x\d+/, label: 'size such as 9x3' });
+export const integer = createToken({ name: 'Integer', pattern: /\d+/, label: 'whole number' });
 export const identifier = createToken({ name: 'Identifier', pattern: /[a-zA-Z_]\w*(?:-\w+)*/, label: 'identifier' });
 export const header = createToken({ name: 'Header', pattern: /archimate-beta(?![\w-])/, categories: identifier });
 
@@ -116,6 +118,11 @@ export const inside = keyword('In', 'in');
 export const via = keyword('Via', 'via');
 export const click = keyword('Click', 'click');
 export const href = keyword('Href', 'href');
+export const positions = keyword('Positions', 'positions');
+export const at = keyword('At', 'at');
+export const size = keyword('Size', 'size');
+export const from = keyword('From', 'from');
+export const to = keyword('To', 'to');
 
 export interface ConnectorNotation {
   readonly type: RelationshipType;
@@ -180,6 +187,8 @@ export const tokens = [
   ...connectorTokens,
   arrow,
   colon,
+  sizeValue,
+  integer,
   openBrace,
   closeBrace,
   direction,
@@ -197,6 +206,11 @@ export const tokens = [
   via,
   click,
   href,
+  positions,
+  at,
+  size,
+  from,
+  to,
   identifier,
 ];
 export const lexer = new Lexer(tokens);

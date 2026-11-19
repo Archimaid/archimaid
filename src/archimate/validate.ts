@@ -2,7 +2,7 @@ import type { IToken } from 'chevrotain';
 import { elementTypes, getElementType, getRelationshipNotation, relationshipTypes } from './catalogue.js';
 import type { AccessMode } from './catalogue.js';
 import type { DiagnosticCollector, Report } from './diagnostics.js';
-import type { ConnectorDeclaration, Declaration, RelationshipDeclaration } from './grammar.js';
+import type { ConnectorDeclaration, Declaration, PositionsDeclaration, RelationshipDeclaration } from './grammar.js';
 import { accDescrBlock, connectorNotations, metadata, quotedTextPattern } from './lexer.js';
 import type {
   ArchiMateDirection,
@@ -17,6 +17,7 @@ import type {
 } from './model.js';
 import { validateNesting } from './nesting.js';
 import type { NestingDeclaration } from './nesting.js';
+import { validatePositions, type ValidatedPositions } from './positions.js';
 import { withSuggestion } from './suggestions.js';
 
 type MetadataKey = 'title' | 'accTitle' | 'accDescription';
@@ -27,7 +28,7 @@ type ClickDeclaration = Extract<Declaration, { kind: 'click' }>;
 type EntityDeclaration = ElementDeclaration | RelationshipDeclaration | NoteDeclaration;
 
 const directionKeys = ['TB', 'TD', 'BT', 'LR', 'RL'];
-const layoutKeys: readonly ArchiMateLayout[] = ['architecture', 'framework', 'graph'];
+const layoutKeys: readonly ArchiMateLayout[] = ['architecture', 'framework', 'graph', 'custom'];
 const accessModes: readonly AccessMode[] = ['read', 'write', 'readWrite', 'unspecified'];
 const linkTargets: readonly ArchiMateLinkTarget[] = ['_blank', '_self', '_parent', '_top'];
 const linkSchemes = new Set(['http', 'https', 'mailto']);
@@ -57,7 +58,7 @@ function readLayout(token: IToken, report: Report): ArchiMateLayout | undefined 
     report(
       'INVALID_LAYOUT',
       token,
-      withSuggestion('Expected layout architecture, framework, or graph.', token.image, layoutKeys),
+      withSuggestion('Expected layout architecture, framework, graph, or custom.', token.image, layoutKeys),
     );
   }
   return value;
@@ -125,6 +126,7 @@ interface DiagramSettings {
   layoutDeclared: boolean;
   direction: ArchiMateDirection | undefined;
   layout: ArchiMateLayout | undefined;
+  layoutToken: IToken | undefined;
   readonly declaredMetadata: Set<MetadataKey>;
   readonly metadata: Partial<Record<MetadataKey, string>>;
 }
@@ -138,6 +140,7 @@ interface CollectedDeclarations {
   readonly relationships: (RelationshipDeclaration | ConnectorDeclaration)[];
   readonly notes: NoteDeclaration[];
   readonly nesting: NestingDeclaration[];
+  readonly positions: PositionsDeclaration[];
 }
 
 interface ValidationContext {
@@ -171,6 +174,7 @@ function collectSetting(
         return;
       }
       settings.layoutDeclared = true;
+      settings.layoutToken = statement.value;
       settings.layout = readLayout(statement.value, report);
       return;
     case 'metadata': {
@@ -223,6 +227,7 @@ function collectDeclarations(declarations: readonly Declaration[], report: Repor
       layoutDeclared: false,
       direction: undefined,
       layout: undefined,
+      layoutToken: undefined,
       declaredMetadata: new Set(),
       metadata: {},
     },
@@ -233,6 +238,7 @@ function collectDeclarations(declarations: readonly Declaration[], report: Repor
     relationships: [],
     notes: [],
     nesting: [],
+    positions: [],
   };
   for (const statement of declarations) {
     switch (statement.kind) {
@@ -258,6 +264,9 @@ function collectDeclarations(declarations: readonly Declaration[], report: Repor
         break;
       case 'nesting':
         collected.nesting.push(statement);
+        break;
+      case 'positions':
+        collected.positions.push(statement);
         break;
       case 'click':
         if (collected.clicks.has(statement.id.image)) {
@@ -500,10 +509,11 @@ function resolveRelationship(
 
 function buildModel(
   settings: DiagramSettings,
-  parts: Pick<ArchiMateModel, 'elements' | 'relationships'> & {
-    readonly notes: readonly ArchiMateNote[];
-    readonly nesting: readonly ArchiMateNesting[];
-  },
+  parts: Pick<ArchiMateModel, 'elements' | 'relationships'> &
+    ValidatedPositions & {
+      readonly notes: readonly ArchiMateNote[];
+      readonly nesting: readonly ArchiMateNesting[];
+    },
 ): ArchiMateModel {
   const selectedLayout = settings.layout ?? (settings.direction === undefined ? 'architecture' : undefined);
   return {
@@ -514,6 +524,8 @@ function buildModel(
     relationships: parts.relationships,
     ...(parts.notes.length > 0 && { notes: parts.notes }),
     ...(parts.nesting.length > 0 && { nesting: parts.nesting }),
+    ...(parts.positions.length > 0 && { positions: parts.positions }),
+    ...(parts.anchors.length > 0 && { anchors: parts.anchors }),
   };
 }
 
@@ -551,6 +563,16 @@ export function validateDeclarations(
     report,
   });
   const elements = buildElements(collected, report);
+  const { positions, anchors } = validatePositions({
+    blocks: collected.positions,
+    layout: collected.settings.layout,
+    layoutToken: collected.settings.layoutToken,
+    entities: collected.entities,
+    relationships,
+    nesting,
+    diagnostics,
+    report,
+  });
   if (diagnostics.hasErrors) return undefined;
-  return buildModel(collected.settings, { elements, relationships, notes, nesting });
+  return buildModel(collected.settings, { elements, relationships, notes, nesting, positions, anchors });
 }

@@ -2,7 +2,9 @@ import type { ElkPoint } from 'elkjs/lib/elk.bundled.js';
 import type { ArchiMateModel } from '../../archimate/model.js';
 import type { ArchiMateLogger } from '../archimateDiagram.js';
 import { ancestors } from '../hierarchy.js';
+import type { ArchiMateSide } from '../../archimate/model.js';
 import { bundleKind, routeArchitecture, type RouteBundle, type RoutingNode } from '../orthogonalRouter.js';
+import type { Side } from '../routing/primitives.js';
 import { clearDecorations, clipCorner, overlayRoute, routePoints } from './elkRoutes.js';
 import type { LayoutGraph } from './graph.js';
 import type { DiagramLayout } from './layout.js';
@@ -36,6 +38,8 @@ export interface RouteInputs {
   readonly logger: ArchiMateLogger | undefined;
 }
 
+const anchorSides = { T: 'top', R: 'right', B: 'bottom', L: 'left' } satisfies Record<ArchiMateSide, Side>;
+
 function architectureRoutes({
   model,
   graph,
@@ -44,6 +48,9 @@ function architectureRoutes({
   logger,
 }: RouteInputs): ReturnType<typeof routeArchitecture> {
   const noteHosts = new Map((model.notes ?? []).map((note) => [note.id, note.on]));
+  const anchors = new Map(
+    model.layout === 'custom' ? (model.anchors ?? []).map((anchor) => [anchor.relationship, anchor]) : [],
+  );
   const routingNodes = new Map<string, RoutingNode>();
   for (const [key, endpoint] of placement.endpoints) {
     const parent = parents.get(noteHosts.get(key) ?? key);
@@ -56,22 +63,25 @@ function architectureRoutes({
   }
   return routeArchitecture(
     routingNodes,
-    Array.from(graph.edges).flatMap(([edgeId, appearance]) =>
-      appearance.overlayLane === undefined
-        ? [
-            {
-              id: edgeId,
-              source: appearance.relationship.source,
-              target: appearance.relationship.target,
-              sourceMarker: appearance.notation.start !== 'none',
-              targetMarker: appearance.notation.end !== 'none',
-              ...(noteHosts.has(appearance.relationship.source) || noteHosts.has(appearance.relationship.target)
-                ? {}
-                : { bundling: bundleKind(appearance.relationship) }),
-            },
-          ]
-        : [],
-    ),
+    Array.from(graph.edges).flatMap(([edgeId, appearance]) => {
+      if (appearance.overlayLane !== undefined) return [];
+      const { relationship } = appearance;
+      const anchor = anchors.get(relationship.id);
+      // A shared trunk leaves from a side of its own choosing, so an anchored relationship runs alone.
+      const bundled = !anchor && !noteHosts.has(relationship.source) && !noteHosts.has(relationship.target);
+      return [
+        {
+          id: edgeId,
+          source: relationship.source,
+          target: relationship.target,
+          sourceMarker: appearance.notation.start !== 'none',
+          targetMarker: appearance.notation.end !== 'none',
+          ...(bundled && { bundling: bundleKind(relationship) }),
+          ...(anchor?.source && { sourceSide: anchorSides[anchor.source] }),
+          ...(anchor?.target && { targetSide: anchorSides[anchor.target] }),
+        },
+      ];
+    }),
     logger,
   );
 }
