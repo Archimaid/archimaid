@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [semantic versioning](https://semver.org/). While the version is 0.x and the header is `archimate-beta`, minor releases may change the syntax.
 
+## 0.2.1
+
+### Language
+
+- Custom layout no longer warns about a nested element without a position. It is placed inside its parent, so leaving it out is a choice, not an omission. Top-level elements without a position still warn.
+
 ## 0.2.0
 
 ### Language

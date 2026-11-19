@@ -94,11 +94,11 @@ The existing layout algorithm is the fallback for elements without a position. T
 1. It places every positioned element exactly where the `positions` block says.
 2. It runs architecture layout (`placeArchitecture`) on the unpositioned elements and the relationships between them, and places the result below the positioned content, separated by the 72-pixel cell gap of architecture layout.
 
-The validator warns once per element: `oms has no position; placed by architecture layout`. This lets an agent add an element without inventing coordinates, and Designer can show such elements as "unplaced" for the user to drag into position.
+The validator warns once per top-level element: `oms has no position; placed by architecture layout`. This lets an agent add an element without inventing coordinates, and Designer can show such elements as "unplaced" for the user to drag into position.
 
 Nesting follows the same rule:
 
-- An unpositioned child of a positioned parent is placed inside the parent, below its positioned children.
+- An unpositioned child of a positioned parent is placed inside the parent, below its positioned children, without a warning: leaving children to the layout is a common choice, not an omission.
 - An unpositioned parent is placed by the fallback with its whole subtree. Positions of its children are ignored, with a warning.
 
 The second pass reuses `placeArchitecture` unchanged on a subset of the model, which keeps it cheap to build. Placing unpositioned elements in the gaps between pinned ones would need a new algorithm and would make pinned diagrams depend on the engine version, so it is out of scope.
@@ -111,7 +111,7 @@ The second pass reuses `placeArchitecture` unchanged on a subset of the model, w
 | Two positions for the same element, or two anchor lines for the same relationship | Error | Only hand editing produces it, and there is no right answer |
 | A connector form that matches several relationships | Error | Name the relationship by its ID |
 | Elements that are not nested and overlap or sit closer than the minimum gap | Warning | Usually a mistake, occasionally deliberate; lines may route poorly |
-| Element without a position in custom layout | Warning, placed by the fallback | See [Partial positions](#partial-positions) |
+| Top-level element without a position in custom layout | Warning, placed by the fallback | See [Partial positions](#partial-positions) |
 | Position of a child whose parent has no position | Warning, ignored | The fallback places the whole subtree |
 
 The block is validated in every layout, so it does not rot while a diagram uses automatic layout.
