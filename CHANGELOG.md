@@ -19,6 +19,11 @@ All notable changes to this package are documented here. The format follows [Kee
 
 - The packaged examples write relationships in shorthand, and a custom layout example is added.
 
+### Project
+
+- [Archimaid Designer](https://design.archimaid.org) draws diagrams on a canvas: drag elements in, name and connect them, move and resize them, and it writes the `archimate-beta` text, with custom layout for the positions. It works on phones too.
+- The agent skill explains how to read and edit the `positions` block: skip it when reading, keep it in step when renaming or removing elements, and leave line routing to the engine.
+
 ## 0.1.1
 
 ### Project
