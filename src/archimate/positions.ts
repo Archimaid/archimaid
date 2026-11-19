@@ -254,10 +254,10 @@ function warnOnCustomLayout(
   const parents = new Map(context.nesting.map(({ child, parent }) => [child, parent]));
   // A position with an error is still declared, so it does not also count as missing.
   const positioned = new Set(entries.keys());
+  // A nested element without a position is placed inside its parent, which is a choice, not an omission.
   for (const [id, entity] of context.entities) {
     if (entity.kind === 'relationship' || (entity.kind === 'note' && entity.anchor)) continue;
-    const parent = parents.get(id);
-    if (!positioned.has(id) && (parent === undefined || positioned.has(parent))) {
+    if (!positioned.has(id) && !parents.has(id)) {
       diagnostics.warning(
         'MISSING_POSITION',
         entity.id,

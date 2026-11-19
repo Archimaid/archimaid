@@ -830,6 +830,11 @@ test('warns about unknown, missing, ignored and crowded positions without failin
   );
 });
 
+test('places nested elements without a position inside their parent without a warning', () => {
+  const { diagnostics } = validateArchiMate(customLayout('    clerk at 0 0\n    fulfil at 10 0\n    oms at 0 8'));
+  assert.deepEqual(diagnostics, []);
+});
+
 test('other layouts ignore positions but still reject invalid ones', () => {
   const graph = customLayout('    clerk at 0 0').replace('layout custom', 'layout graph');
   assert.deepEqual(validateArchiMate(graph).diagnostics, []);
