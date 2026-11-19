@@ -16,9 +16,11 @@ export type ArchiMateErrorCode =
   | 'INVALID_RELATIONSHIP_PROPERTY'
   | 'INVALID_NOTE_TARGET'
   | 'INVALID_NESTING'
-  | 'INVALID_LINK';
+  | 'INVALID_LINK'
+  | 'INVALID_POSITION';
 
-export type ArchiMateWarningCode = 'DUPLICATE_RELATIONSHIP';
+export type ArchiMateWarningCode =
+  'DUPLICATE_RELATIONSHIP' | 'UNKNOWN_POSITION_TARGET' | 'IGNORED_POSITION' | 'MISSING_POSITION' | 'CROWDED_POSITION';
 
 export class ArchiMateError extends Error {
   constructor(

@@ -18,6 +18,7 @@ export type {
   RelationshipType,
 } from './archimate/catalogue.js';
 export type {
+  ArchiMateAnchor,
   ArchiMateDirection,
   ArchiMateElement,
   ArchiMateLayout,
@@ -26,5 +27,7 @@ export type {
   ArchiMateModel,
   ArchiMateNesting,
   ArchiMateNote,
+  ArchiMatePosition,
   ArchiMateRelationship,
+  ArchiMateSide,
 } from './archimate/model.js';

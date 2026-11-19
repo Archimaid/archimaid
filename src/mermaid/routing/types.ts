@@ -1,5 +1,6 @@
 import type { Box, Point } from '../architectureLayout.js';
 import { ancestors } from '../hierarchy.js';
+import type { Side } from './primitives.js';
 
 export interface RoutingNode {
   readonly box: Box;
@@ -15,6 +16,9 @@ export interface RoutingEdge {
   readonly targetMarker?: boolean;
   // Absent means the relationship is never bundled, as for relationships of notes.
   readonly bundling?: BundleKind;
+  // Sides the author chose in custom layout; the router picks any side that is absent.
+  readonly sourceSide?: Side;
+  readonly targetSide?: Side;
 }
 
 // Relationships drawn alike may share a line, so a bundle needs the same type, access mode and direction.

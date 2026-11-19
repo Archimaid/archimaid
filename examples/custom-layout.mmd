@@ -1,0 +1,23 @@
+archimate-beta
+  layout custom
+  accTitle: Order fulfilment with pinned positions
+  accDescr: A fulfilment clerk performs the fulfil order process, which the order service serves. The order management component, containing billing, realizes the order service.
+
+  element businessRole clerk "Fulfilment clerk"
+  element businessProcess fulfil "Fulfil order"
+  element applicationService orders "Order service"
+  element applicationComponent oms "Order management" {
+    element applicationComponent billing "Billing"
+  }
+  clerk @==> fulfil
+  orders --> fulfil
+  oms ..|> orders
+
+  positions {
+    clerk at 0 0
+    fulfil at 10 0 size 9x3
+    orders at 10 8
+    oms at 8 14
+    billing at 1 0
+    orders --> fulfil from T to B
+  }

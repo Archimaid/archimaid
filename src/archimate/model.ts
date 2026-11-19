@@ -1,7 +1,10 @@
 import type { SpecifiedAccessMode } from './catalogue.js';
 
 export type ArchiMateDirection = 'TB' | 'BT' | 'LR' | 'RL';
-export type ArchiMateLayout = 'architecture' | 'framework' | 'graph';
+export type ArchiMateLayout = 'architecture' | 'framework' | 'graph' | 'custom';
+
+// Top, right, bottom or left, as in Mermaid architecture diagrams.
+export type ArchiMateSide = 'T' | 'R' | 'B' | 'L';
 
 export type ArchiMateLinkTarget = '_blank' | '_self' | '_parent' | '_top';
 
@@ -42,6 +45,25 @@ export interface ArchiMateNesting {
   readonly relationship?: string;
 }
 
+/**
+ * A pinned element or note in custom layout, in grid units from the top-left corner of the diagram,
+ * or of the parent's content area for a nested element. Width and height are minimums.
+ */
+export interface ArchiMatePosition {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width?: number;
+  readonly height?: number;
+}
+
+// The side where a relationship leaves its source or enters its target; the router chooses an omitted side.
+export interface ArchiMateAnchor {
+  readonly relationship: string;
+  readonly source?: ArchiMateSide;
+  readonly target?: ArchiMateSide;
+}
+
 export interface ArchiMateModel {
   readonly direction: ArchiMateDirection;
   readonly layout?: ArchiMateLayout;
@@ -52,4 +74,7 @@ export interface ArchiMateModel {
   readonly relationships: readonly ArchiMateRelationship[];
   readonly notes?: readonly ArchiMateNote[];
   readonly nesting?: readonly ArchiMateNesting[];
+  // Read only in custom layout; other layouts ignore them.
+  readonly positions?: readonly ArchiMatePosition[];
+  readonly anchors?: readonly ArchiMateAnchor[];
 }

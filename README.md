@@ -84,6 +84,7 @@ Write `source <connector> target` to declare a relationship. Add `: "Text"` for 
 | Order management | Assignment, Realization, Serving, and read Access | [Source](examples/order-management.mmd) · [SVG](examples/order-management.svg) |
 | Cross-layer relationships | Architecture layout with Business, Application, and Technology rows and nested claims processing | [Source](examples/cross-layer-relationships.mmd) · [SVG](examples/cross-layer-relationships.svg) |
 | Nested components | Composition shown as containment, edges crossing the boundary, and notes | [Source](examples/nested-components.mmd) · [SVG](examples/nested-components.svg) |
+| Custom layout | Pinned positions, a nested element and a relationship anchored to chosen sides | [Source](examples/custom-layout.mmd) · [SVG](examples/custom-layout.svg) |
 | Notation sheet | The element catalogue and examples of every relationship, including Access and Association variants | [SVG](examples/element-preview.svg) |
 
 ### Choose a layout
@@ -97,6 +98,41 @@ In architecture and framework layout, relationships of the same type that leave 
 Architecture and framework layouts preserve nesting. A parent with its own layer determines the placement of its container. Groups without their own layer that contain elements from multiple layers are placed separately.
 
 Use `layout graph` for a relationship-driven layout. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL`, and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
+
+### Pin elements with custom layout
+
+Use `layout custom` to place elements yourself, for example to follow your own modelling conventions. Describe the layout in one `positions` block, conventionally at the end of the diagram, so readers and AI agents can skip it. Archimaid still routes every relationship.
+
+```text
+archimate-beta
+  layout custom
+
+  element businessRole clerk "Fulfilment clerk"
+  element businessProcess fulfil "Fulfil order"
+  element applicationService orders "Order service"
+  element applicationComponent oms "Order management" {
+    element applicationComponent billing "Billing"
+  }
+  clerk @==> fulfil
+  orders --> fulfil
+  oms ..|> orders
+
+  positions {
+    clerk at 0 0
+    fulfil at 10 0 size 9x3
+    orders at 10 8
+    oms at 8 14
+    billing at 1 0
+    orders --> fulfil from T to B
+  }
+```
+
+- `id at x y` pins an element or a standalone note. Coordinates are whole grid units of 20 pixels from the top-left corner of the diagram to the top-left corner of the element. A nested element is positioned relative to the content area of its parent, so moving a parent moves its children.
+- `size 9x3` sets a minimum width and height in grid units. Without it, an element gets its measured size rounded up to whole grid units; the smallest element is `7x3`. Elements never clip their names, and a parent always grows to enclose its children.
+- `source connector target from T to B`, or `relationshipId from T to B`, chooses the side where a relationship leaves its source and enters its target: `T`, `R`, `B` or `L`. Either side may be left out. An anchored relationship is not bundled with others.
+- Elements without a position are placed by architecture layout, below the positioned elements or inside their positioned parent, and the validator warns about each one. Without a `positions` block, custom layout places the whole diagram like architecture layout.
+- A position or anchor that refers to an undeclared ID is ignored with a warning, so deleting an element never breaks the diagram. Keep elements that are not nested at least 2 grid units apart; the validator warns when they are closer.
+- Other layouts ignore the `positions` block but still check it, so switching between `layout custom` and an automatic layout is a one-line change. Positions are an Archimaid extension and not part of Mermaid.
 
 ### Nest elements and add notes
 

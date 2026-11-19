@@ -334,3 +334,29 @@ test('warns when a self-relationship cannot keep clear of other shapes', () => {
   routeArchitecture(open, [{ id: 'loop', source: 'a', target: 'a' }], { warn: (message) => quiet.push(message) });
   assert.deepEqual(quiet, []);
 });
+
+test('custom layout pins nodes to the grid and places the rest below them', async () => {
+  const { placeCustom } = await import('../dist/mermaid/customLayout.js');
+  const nodes = [
+    { id: 'pinned', width: 124, height: 54 },
+    { id: 'loose', width: 124, height: 54 },
+    { id: 'parent', width: 124, height: 54, children: [{ id: 'child', width: 130, height: 54 }] },
+  ];
+  const fallback = (members) => placeArchitecture(members, new Map(), [], { ...options, rowOrder: [] });
+  const layout = placeCustom(nodes, {
+    positions: new Map([
+      ['pinned', { x: 1, y: 2, width: 9 }],
+      ['parent', { x: 12, y: 0 }],
+      ['child', { x: 0, y: 0 }],
+    ]),
+    headerHeights: new Map([['parent', 54]]),
+    padding: 24,
+    fallback,
+  });
+  const [pinned, loose, parent] = layout.children;
+  assert.deepEqual([pinned.id, loose.id, parent.id], ['pinned', 'loose', 'parent']);
+  assert.deepEqual(pinned, { id: 'pinned', x: 44, y: 64, width: 180, height: 60 });
+  assert.deepEqual(parent.children[0], { id: 'child', x: 288, y: 102, width: 140, height: 60 });
+  assert.ok(parent.width >= 140 + 48 && parent.height >= 54 + 60 + 48);
+  assert.ok(loose.y >= Math.max(pinned.y + pinned.height, parent.y + parent.height) + 72);
+});

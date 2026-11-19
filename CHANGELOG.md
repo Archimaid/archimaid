@@ -2,6 +2,23 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [semantic versioning](https://semver.org/). While the version is 0.x and the header is `archimate-beta`, minor releases may change the syntax.
 
+## 0.2.0
+
+### Language
+
+- `layout custom` with a `positions { … }` block pins elements and standalone notes to a 20-pixel grid with `id at x y` and an optional minimum `size WxH`. Nested elements are positioned relative to their parent.
+- `source connector target from T to B` or `relationshipId from T to B` in the block chooses the sides where a relationship leaves its source and enters its target.
+- New warnings for positions that refer to undeclared IDs, are ignored, are missing in custom layout, or sit closer than 2 grid units to a neighbour. New error code `INVALID_POSITION`.
+- `ArchiMateModel` gains optional `positions` and `anchors`, exported with the `ArchiMatePosition`, `ArchiMateAnchor` and `ArchiMateSide` types.
+
+### Rendering
+
+- Custom layout places pinned elements as written, routes relationships with the architecture router, and places elements without a position with architecture layout. Other layouts ignore the `positions` block.
+
+### Examples
+
+- The packaged examples write relationships in shorthand, and a custom layout example is added.
+
 ## 0.1.1
 
 ### Project

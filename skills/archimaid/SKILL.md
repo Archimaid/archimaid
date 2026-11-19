@@ -29,6 +29,8 @@ archimate-beta
 - Use `layout framework` for the same layer order with fixed Passive Structure, Behavior, and Active Structure columns from left to right and Motivation on the far right. Only occupied rows and columns take up space.
 - Architecture and framework layouts preserve nesting. A parent with its own layer determines its container's placement. Groups without their own layer that contain elements from multiple layers are placed separately.
 - Use `layout graph` for relationship-driven placement. Graph layout accepts `direction TB`, `BT`, `LR`, or `RL` and defaults to `TB`. A `direction` declaration on its own selects graph layout. An explicit `layout` declaration takes precedence.
+- `layout custom` pins elements with a `positions { … }` block at the end of the diagram: `id at x y [size WxH]` in 20-pixel grid units, nested elements relative to their parent, and `source connector target from T to B` or `relationshipId from T to B` to choose relationship sides. Unpositioned elements fall back to architecture layout with a warning.
+- When reading a diagram, skip the `positions` block; it holds layout only. When adding an element, a position is optional. When removing or renaming an element, also remove or rename its lines in `positions`. Do not add anchors to fix a rendering; leave routing to the engine.
 
 ## Element types
 
