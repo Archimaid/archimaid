@@ -10,11 +10,13 @@
 
 Archimaid lets you write ArchiMate® 3.2 diagrams in plain text, validate their structure in CI, and render them as SVG. This independent Mermaid plugin includes 60 element types, 11 relationship types, nesting, notes, and element links. The `archimate-beta` syntax is experimental.
 
+**Try it without installing anything in [Archimaid Designer](https://try.archimaid.org)**, a drag-and-drop editor in the browser that writes the text for you.
+
 **Automatic relationship checks against ArchiMate 3.2 Appendix B are under development.** Their release depends on permission from The Open Group to distribute the relationship lookup.
 
 ![Application components and services supporting an order fulfilment process](examples/order-management.svg)
 
-[Quick start](#quick-start) · [Examples](#examples) · [Host integration](#host-integration) · [Language API](#language-api) · [Coverage](#coverage) · [Development](#development) · [Sources](#sources)
+[Quick start](#quick-start) · [Examples](#examples) · [Host integration](#host-integration) · [Language API](#language-api) · [Coverage](#coverage) · [Development](#development) · [Support](#support) · [Sources](#sources)
 
 ## Quick start
 
@@ -298,6 +300,10 @@ npm install mermaid /path/to/archimaid-0.1.0.tgz
 Use `npm run typecheck` to check TypeScript without emitting files and `npm run render:preview` to regenerate the notation sheet. After changing the catalogue, run `npm run reference` to regenerate the type reference; a test fails while it is stale. The browser tests exercise the plugin through a real Mermaid host.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, conventions and how to add an element type. Report security issues as described in [SECURITY.md](SECURITY.md). To generate or edit diagrams with an agent, point it to the repository skill. It covers syntax, relationship direction, and validation commands. [Foundation](FOUNDATION.md) · [Agent skill](skills/archimaid/SKILL.md)
+
+## Support
+
+Archimaid is free and built in the maintainer's own time. If it saves you time, [star the repository](https://github.com/Archimaid/archimaid) so other architects can find it, or [sponsor the project on GitHub](https://github.com/sponsors/Archimaid). One-time sponsorships are welcome.
 
 ## Sources
 

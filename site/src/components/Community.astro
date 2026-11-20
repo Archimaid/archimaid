@@ -18,6 +18,10 @@ import { project } from '../lib/project';
           <a class="button feedback" href={project.newIssue}>Share feedback</a>
           <a class="button contribute" href={project.contributing}>Contribute</a>
         </div>
+        <p class="support">
+          Free and built in spare time. <a href={project.repository}>Star it on GitHub</a> so other architects can find
+          it, or <a href={project.sponsor}>sponsor the project</a>.
+        </p>
       </div>
       <div class="roadmap">
         <h3>On the roadmap</h3>
@@ -112,6 +116,16 @@ import { project } from '../lib/project';
     flex-wrap: wrap;
     gap: 14px;
     margin-top: 8px;
+  }
+
+  .pitch .support {
+    font-size: 15px;
+    color: #b9b8c6;
+  }
+
+  .support a {
+    color: #f3f2ee;
+    text-underline-offset: 3px;
   }
 
   .feedback {
