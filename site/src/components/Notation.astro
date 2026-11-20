@@ -3,44 +3,147 @@ import type { ElementType } from 'archimaid/language';
 import { elementNotation } from '../lib/notation';
 import ElementShape from './ElementShape.astro';
 
-const samples: readonly ElementType[] = [
-  'capability',
-  'businessActor',
-  'applicationComponent',
-  'node',
-  'workPackage',
-  'goal',
+const rows: readonly (readonly ElementType[])[] = [
+  [
+    'capability',
+    'businessActor',
+    'applicationComponent',
+    'node',
+    'workPackage',
+    'goal',
+    'valueStream',
+    'businessProcess',
+    'dataObject',
+    'device',
+    'principle',
+    'businessEvent',
+  ],
+  [
+    'stakeholder',
+    'resource',
+    'businessRole',
+    'applicationService',
+    'systemSoftware',
+    'deliverable',
+    'requirement',
+    'courseOfAction',
+    'businessObject',
+    'applicationInterface',
+    'equipment',
+    'gap',
+  ],
+  [
+    'technologyService',
+    'plateau',
+    'driver',
+    'product',
+    'applicationFunction',
+    'artifact',
+    'facility',
+    'outcome',
+    'businessService',
+    'communicationNetwork',
+    'contract',
+    'applicationEvent',
+  ],
 ];
 ---
 
-<section class="container section">
-  <div class="section-heading" data-reveal>
-    <span class="eyebrow">Notation</span>
-    <h2>Every layer in its own colour.</h2>
-    <p>The familiar ArchiMate® layer colours and icons, so a diagram reads the way your team expects.</p>
+<section class="section">
+  <div class="container">
+    <div class="section-heading" data-reveal>
+      <span class="eyebrow">Notation</span>
+      <h2>Every layer in its own colour.</h2>
+      <p>The familiar ArchiMate® layer colours and icons, so a diagram reads the way your team expects.</p>
+    </div>
   </div>
-  <ul class="samples">
+  <div class="rows" data-reveal>
     {
-      samples.map((type, index) => (
-        <li data-reveal style={`--reveal-delay: ${index * 70}ms`}>
-          <ElementShape type={type} label={elementNotation(type).name} width={212} />
-        </li>
+      rows.map((types) => (
+        <ul class="row">
+          {types.map((type) => (
+            <li>
+              <ElementShape type={type} label={elementNotation(type).name} width={212} />
+            </li>
+          ))}
+        </ul>
       ))
     }
-  </ul>
+  </div>
 </section>
 
 <style>
-  .samples {
-    display: flex;
-    flex-wrap: wrap;
+  .rows {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
-    margin: 40px 0 0;
+    margin-top: 40px;
+    overflow: clip;
+  }
+
+  .row {
+    --drift: 160px;
+    position: relative;
+    left: 50%;
+    display: flex;
+    gap: 18px;
+    width: max-content;
+    margin: 0;
     padding: 0;
     list-style: none;
+    translate: -50% 0;
   }
 
   li {
     line-height: 0;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .row {
+        animation-name: drift-left;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+      }
+
+      .row:nth-child(even) {
+        animation-name: drift-right;
+      }
+    }
+  }
+
+  @keyframes drift-left {
+    from {
+      translate: calc(-50% + var(--drift)) 0;
+    }
+    to {
+      translate: calc(-50% - var(--drift)) 0;
+    }
+  }
+
+  @keyframes drift-right {
+    from {
+      translate: calc(-50% - var(--drift)) 0;
+    }
+    to {
+      translate: calc(-50% + var(--drift)) 0;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .rows,
+    .row {
+      gap: 12px;
+    }
+
+    .row {
+      --drift: 120px;
+    }
+
+    li :global(svg) {
+      width: 168px;
+      height: auto;
+    }
   }
 </style>

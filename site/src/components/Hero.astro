@@ -114,10 +114,25 @@ const description =
   mark {
     padding: 0 0.18em;
     border-radius: 0.18em;
-    background: var(--business);
+    background: linear-gradient(var(--business), var(--business)) no-repeat;
+    background-size: 0% 100%;
+    animation: draw-highlight 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.35s forwards;
     color: inherit;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
+  }
+
+  @keyframes draw-highlight {
+    to {
+      background-size: 100% 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    mark {
+      background-size: 100% 100%;
+      animation: none;
+    }
   }
 
   .lede {
