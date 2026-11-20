@@ -9,6 +9,34 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      package: ${{ steps.filter.outputs.package }}
+    steps:
+      - id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            files="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')"
+          else
+            files="$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq '.files[].filename')"
+          fi
+          if printf '%s\n' "$files" | grep -qv '^site/'; then
+            echo "package=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "package=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Only site/ changed; skipping package tests."
+          fi
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -23,25 +51,34 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
   test:
+    needs: changes
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node: ['22', '26']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.package == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.package == 'true'
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+        if: needs.changes.outputs.package == 'true'
       - run: npm test
+        if: needs.changes.outputs.package == 'true'
       - run: npx playwright install --with-deps chromium
+        if: needs.changes.outputs.package == 'true'
       - name: Install bundler consumer fixtures
+        if: needs.changes.outputs.package == 'true'
         run: |
           for fixture in vite webpack rollup; do
             npm install --no-package-lock --prefix "test/consumers/$fixture"
           done
       - run: npm run test:browser
+        if: needs.changes.outputs.package == 'true'
       - run: npm pack --dry-run
+        if: needs.changes.outputs.package == 'true'
