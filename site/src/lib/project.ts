@@ -23,5 +23,6 @@ export const project = {
   reference: `${repository}/blob/main/docs/reference.md`,
   readme: `${repository}#readme`,
   npm: `https://www.npmjs.com/package/${packageJson.name}`,
+  sponsor: packageJson.funding.url,
   designer: 'https://try.archimaid.org',
 } as const;

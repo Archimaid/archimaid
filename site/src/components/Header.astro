@@ -2,6 +2,9 @@
 import { project } from '../lib/project';
 import GitHubIcon from './GitHubIcon.astro';
 import Logo from './Logo.astro';
+import { formatStars, starCount } from '../lib/stars';
+
+const stars = await starCount();
 ---
 
 <header class="container header">
@@ -18,7 +21,8 @@ import Logo from './Logo.astro';
     <a href="/#community">Contribute</a>
     <a class="button github" href={project.repository}>
       <GitHubIcon />
-      GitHub
+      {stars === null ? 'Star on GitHub' : 'Star'}
+      {stars !== null && <span class="stars" aria-label={`${stars} stars`}>{formatStars(stars)}</span>}
     </a>
   </nav>
 </header>
@@ -77,6 +81,13 @@ import Logo from './Logo.astro';
     min-height: 44px;
     padding: 0 18px;
     font-size: 15px;
+  }
+
+  .stars {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding-left: 10px;
+    border-left: 1.5px solid var(--ink);
   }
 
   @media (max-width: 720px) {
