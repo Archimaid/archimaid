@@ -23,6 +23,5 @@ export const project = {
   reference: `${repository}/blob/main/docs/reference.md`,
   readme: `${repository}#readme`,
   npm: `https://www.npmjs.com/package/${packageJson.name}`,
-  playground: 'https://try.archimaid.org',
-  designer: 'https://design.archimaid.org',
+  designer: 'https://try.archimaid.org',
 } as const;

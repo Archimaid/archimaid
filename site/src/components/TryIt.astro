@@ -1,0 +1,455 @@
+---
+import { validateArchiMate, type ElementType } from 'archimaid/language';
+import { designerLink } from '../lib/designer';
+import { elementNotation } from '../lib/notation';
+import { project } from '../lib/project';
+import CodeLines from './CodeLines.astro';
+import ElementIcon from './ElementIcon.astro';
+import ElementShape from './ElementShape.astro';
+
+interface Example {
+  readonly fileName: string;
+  readonly title: string;
+  readonly elementCount: number;
+  readonly link: string;
+}
+
+const sources = import.meta.glob<string>('../../../examples/*.mmd', { query: '?raw', import: 'default', eager: true });
+
+const examples: readonly Example[] = Object.entries(sources)
+  .map(([path, source]) => {
+    const fileName = path.slice(path.lastIndexOf('/') + 1);
+    const { model } = validateArchiMate(source);
+    if (!model) throw new Error(`The packaged example ${fileName} no longer parses; fix it before linking to it.`);
+    const title = model.title ?? model.accTitle;
+    if (!title) throw new Error(`The packaged example ${fileName} needs a title or accTitle to be listed.`);
+    return { fileName, title, elementCount: model.elements.length, link: designerLink(source, 'view') };
+  })
+  .sort((left, right) => left.elementCount - right.elementCount);
+
+const designerHost = new URL(project.designer).host;
+
+// The scene is drawn in a 560 × 400 canvas; elements are placed in percentages of it, so the picture scales
+// with its column while the lines in the overlay keep the same coordinates.
+const canvasSize = { width: 560, height: 400 };
+
+interface SceneElement {
+  readonly type: ElementType;
+  readonly label: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+const sceneElements: readonly SceneElement[] = [
+  { type: 'businessRole', label: 'Fulfilment clerk', x: 36, y: 32, width: 160, height: 60 },
+  { type: 'businessProcess', label: 'Fulfil order', x: 330, y: 32, width: 160, height: 60 },
+  { type: 'applicationService', label: 'Order service', x: 330, y: 142, width: 160, height: 60 },
+  { type: 'applicationComponent', label: 'Order management', x: 330, y: 252, width: 160, height: 64 },
+];
+
+const placement = ({ x, y, width }: SceneElement) =>
+  `left: ${(x / canvasSize.width) * 100}%; top: ${(y / canvasSize.height) * 100}%; width: ${(width / canvasSize.width) * 100}%`;
+
+const paletteTypes = (
+  [
+    { type: 'businessActor', label: 'Actor' },
+    { type: 'businessProcess', label: 'Process' },
+    { type: 'applicationService', label: 'Service' },
+    { type: 'node', label: 'Node' },
+  ] as const satisfies readonly { type: ElementType; label: string }[]
+).map((entry) => ({ ...entry, layer: elementNotation(entry.type).layer }));
+
+// The text behind the scene; the highlighted position is the line the last drag wrote.
+const sceneSource = `clerk @==> fulfil
+positions {
+  oms at 16 12
+}`;
+---
+
+<section id="try" class="container section">
+  <div class="layout">
+    <div class="pitch section-heading" data-reveal>
+      <span class="eyebrow">Try it now</span>
+      <h2>Draw one now. Install&nbsp;nothing.</h2>
+      <p>Drag elements onto a canvas, open a <code>.mmd</code> file, or write the text. It all runs in your browser.</p>
+    </div>
+
+    <div class="launch" data-reveal>
+      <a class="button open" href={project.designer}>
+        Open {designerHost}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"></path></svg
+        >
+      </a>
+      <div class="examples">
+        <h3 id="examples-heading">Or open an example</h3>
+        <ul aria-labelledby="examples-heading">
+          {
+            examples.map((example) => (
+              <li>
+                <a href={example.link} title={`${example.title}, ${example.elementCount} elements`}>
+                  {example.fileName}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+
+    <div class="scene" data-reveal style="--reveal-delay: 120ms" aria-hidden="true">
+      <div class="canvas">
+        <svg class="lines" viewBox={`0 0 ${canvasSize.width} ${canvasSize.height}`}>
+          <defs>
+            <marker id="try-filled" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+              <path d="M0 0 10 5 0 10z" fill="var(--ink)"></path>
+            </marker>
+            <marker id="try-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7">
+              <circle cx="5" cy="5" r="4" fill="var(--ink)"></circle>
+            </marker>
+            <marker id="try-open" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+              <path d="M1 1 9 5 1 9" fill="none" stroke="var(--ink)" stroke-width="1.4"></path>
+            </marker>
+            <marker id="try-hollow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto">
+              <path d="M1 1 11 6 1 11z" fill="var(--white)" stroke="var(--ink)" stroke-width="1.2"></path>
+            </marker>
+          </defs>
+          <path d="M196 62H330" class="line" marker-start="url(#try-dot)" marker-end="url(#try-filled)"></path>
+          <path d="M410 142V92" class="line" marker-end="url(#try-open)"></path>
+          <path d="M410 252V202" class="line dashed" marker-end="url(#try-hollow)"></path>
+          <path d="M330 284C280 284 262 226 214 226" class="drawing"></path>
+          <circle cx="214" cy="226" r="6" class="drawing-end"></circle>
+          <rect x="324" y="246" width="172" height="76" rx="4" class="selection"></rect>
+          {
+            [
+              [410, 246],
+              [496, 284],
+              [410, 322],
+              [324, 284],
+            ].map(([cx, cy]) => <circle cx={cx} cy={cy} r="6" class="handle" />)
+          }
+        </svg>
+        {
+          sceneElements.map((element) => (
+            <div class="element" style={placement(element)}>
+              <ElementShape type={element.type} label={element.label} width={element.width} height={element.height} />
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="card palette">
+        <span class="palette-title">Elements</span>
+        {
+          paletteTypes.map(({ type, label, layer }) => (
+            <span class="tile">
+              <span class="tile-icon" style={`background: var(--${layer})`}>
+                <ElementIcon type={type} size={17} strokeWidth={1.3} />
+              </span>
+              {label}
+            </span>
+          ))
+        }
+      </div>
+
+      <div class="card code">
+        <div class="code-bar"><span class="code-dot"></span>order-fulfilment.mmd</div>
+        <pre class="code-lines"><CodeLines source={sceneSource} /></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Wide screens put the scene beside the pitch and the way in; narrow ones show the scene between them. */
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas:
+      'pitch scene'
+      'launch scene';
+    column-gap: 56px;
+    align-items: center;
+  }
+
+  .pitch {
+    grid-area: pitch;
+    align-self: end;
+  }
+
+  .launch {
+    grid-area: launch;
+    align-self: start;
+    margin-top: 28px;
+  }
+
+  .scene {
+    grid-area: scene;
+  }
+
+  .open {
+    background: var(--application);
+  }
+
+  .examples {
+    margin-top: 36px;
+  }
+
+  .examples h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-muted);
+  }
+
+  .examples ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .examples a {
+    display: inline-flex;
+    padding: 6px 12px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--white);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-decoration: none;
+    transition:
+      background 0.15s,
+      transform 0.15s;
+  }
+
+  .examples a:hover {
+    background: var(--application);
+    transform: translateY(-1px);
+  }
+
+  /* The scene: a designer canvas with a palette and the text panel floating over its edges. */
+  .scene {
+    position: relative;
+    padding: 0 24px 104px 40px;
+  }
+
+  .canvas {
+    position: relative;
+    aspect-ratio: 560 / 400;
+    border: 2.5px solid var(--ink);
+    border-radius: 22px;
+    overflow: hidden;
+    background-color: var(--paper);
+    background-image: radial-gradient(circle at 1px 1px, #d6d3c8 1.3px, transparent 1.4px);
+    background-size: 16px 16px;
+    box-shadow: 10px 10px 0 var(--ink);
+  }
+
+  .lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .line {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.4;
+  }
+
+  .dashed {
+    stroke-dasharray: 5 4;
+  }
+
+  .drawing {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+  }
+
+  .drawing-end {
+    fill: #1f7fae;
+  }
+
+  .selection {
+    fill: none;
+    stroke: #1f7fae;
+    stroke-width: 2;
+  }
+
+  .handle {
+    fill: var(--white);
+    stroke: #1f7fae;
+    stroke-width: 2;
+  }
+
+  .element {
+    position: absolute;
+  }
+
+  .element :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .card {
+    position: absolute;
+    border: 2.5px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+
+  .palette {
+    left: 0;
+    top: 38%;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 148px;
+    padding: 12px;
+    background: var(--white);
+    animation: drift 7s ease-in-out infinite;
+  }
+
+  .palette-title {
+    margin-bottom: 2px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .tile {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 7px;
+    border-radius: 10px;
+    background: #f5f4ef;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .tile-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+  }
+
+  .code {
+    right: 0;
+    bottom: 0;
+    width: min(330px, 70%);
+    overflow: hidden;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    animation: drift 8s ease-in-out -3s infinite;
+  }
+
+  .code-bar {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #2a2a36;
+    font: 13px var(--font-mono);
+    color: #a9a9bb;
+  }
+
+  .code-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #ff92b8;
+  }
+
+  .code-lines {
+    margin: 0;
+    padding: 10px 0 12px;
+    font-size: 14px;
+    line-height: 24px;
+  }
+
+  .code-lines :global(.line) {
+    display: block;
+    padding: 0 16px;
+  }
+
+  .code-lines :global(.line:nth-child(3)) {
+    background: rgba(195, 182, 255, 0.2);
+    box-shadow: inset 4px 0 0 #c3b6ff;
+  }
+
+  @keyframes drift {
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .palette,
+    .code {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'pitch' 'scene' 'launch';
+      row-gap: 32px;
+    }
+
+    .launch {
+      margin-top: 0;
+    }
+  }
+
+  /* A phone keeps the canvas and the text; the palette would cover the diagram. */
+  @media (max-width: 560px) {
+    .scene {
+      padding: 0 8px 106px 0;
+    }
+
+    .palette {
+      display: none;
+    }
+
+    .code {
+      width: 82%;
+      box-shadow: 6px 6px 0 var(--ink);
+    }
+
+    .code-bar {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+
+    .code-lines {
+      padding: 8px 0 10px;
+      font-size: 12px;
+      line-height: 20px;
+    }
+
+    .code-lines :global(.line) {
+      padding: 0 14px;
+    }
+  }
+</style>
