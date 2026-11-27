@@ -2,6 +2,17 @@
 
 All notable changes to this package are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package uses [semantic versioning](https://semver.org/). While the version is 0.x and the header is `archimate-beta`, minor releases may change the syntax.
 
+## 0.2.2
+
+### Language
+
+- `validateArchiMate` returns `sources` next to the model: where each element, relationship, note, position and anchor is written, with spans for their parts. Spans carry 0-based `offset` and `endOffset` into the source as well as lines and columns, so editors can change one part of the text without searching for it. New types `ArchiMateSourceMap`, `ArchiMateSourceSpan` and one per kind of statement.
+- `archimaid/language` exports `gridUnit` and `layoutPadding`, the grid geometry that custom layout positions refer to.
+
+### Rendering
+
+- Every element's SVG group carries `data-archimate-header-height`, the height of its header, below which custom layout starts the grid for nested elements.
+
 ## 0.2.1
 
 ### Language
