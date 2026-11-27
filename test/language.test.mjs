@@ -850,3 +850,144 @@ test('other layouts ignore positions but still reject invalid ones', () => {
     ['INVALID_POSITION', 'Size must be at least 1x1.'],
   ]);
 });
+
+test('locates every model part in the source, past a byte order mark, frontmatter and CRLF', () => {
+  const source =
+    '﻿' +
+    [
+      '---',
+      'config:',
+      '  theme: base',
+      '---',
+      'archimate-beta',
+      '  layout custom',
+      '  element applicationComponent crm "CRM" {',
+      '    element applicationComponent orders "Orders 📦"',
+      '  }',
+      '  element businessRole clerk "Clerk"',
+      '  description crm "Customer data"',
+      '  click crm href "https://example.com" "Open" _blank',
+      '  relationship access reads clerk -> crm access read label "reads"',
+      '  clerk --> crm: "uses"',
+      '  clerk --> orders',
+      '  note hint "Check" on clerk',
+      '  positions {',
+      '    crm at 0 0 size 12x8',
+      '    clerk at 14 0',
+      '    hint at 1 1',
+      '    reads from R to L',
+      '    clerk --> crm to T',
+      '  }',
+    ].join('\r\n');
+  const { model, sources, diagnostics } = validateArchiMate(source, { lineOffset: 2 });
+  assert.deepEqual(
+    diagnostics.filter(({ severity }) => severity === 'error'),
+    [],
+  );
+  assert.ok(model && sources);
+  const text = (span) => source.slice(span.offset, span.endOffset);
+
+  const crm = sources.elements.get('crm');
+  assert.equal(
+    text(crm.statement),
+    'element applicationComponent crm "CRM" {\r\n    element applicationComponent orders "Orders 📦"\r\n  }',
+  );
+  assert.deepEqual([text(crm.type), text(crm.id), text(crm.name)], ['applicationComponent', 'crm', '"CRM"']);
+  assert.deepEqual(crm.name, {
+    line: 9,
+    column: 36,
+    endLine: 9,
+    endColumn: 41,
+    offset: source.indexOf('"CRM"'),
+    endOffset: source.indexOf('"CRM"') + 5,
+  });
+  assert.equal(text(crm.description.statement), 'description crm "Customer data"');
+  assert.equal(text(crm.description.value), '"Customer data"');
+  assert.deepEqual(
+    [text(crm.link.statement), text(crm.link.url), text(crm.link.tooltip), text(crm.link.target)],
+    ['click crm href "https://example.com" "Open" _blank', '"https://example.com"', '"Open"', '_blank'],
+  );
+  assert.equal(text(sources.elements.get('orders').name), '"Orders 📦"');
+  assert.equal(sources.elements.get('clerk').description, undefined);
+
+  const reads = sources.relationships.get('reads');
+  assert.equal(reads.notation, 'longForm');
+  assert.deepEqual(
+    [text(reads.statement), text(reads.type), text(reads.id), text(reads.access), text(reads.label)],
+    [
+      'relationship access reads clerk -> crm access read label "reads"',
+      'access',
+      'reads',
+      'access read',
+      'label "reads"',
+    ],
+  );
+  assert.deepEqual(
+    model.relationships.map(({ id }) => id),
+    ['reads', 'clerk__serving__crm', 'clerk__serving__orders'],
+  );
+  const uses = sources.relationships.get('clerk__serving__crm');
+  assert.equal(uses.notation, 'shorthand');
+  assert.deepEqual(
+    [text(uses.statement), text(uses.source), text(uses.connector), text(uses.target), text(uses.label)],
+    ['clerk --> crm: "uses"', 'clerk', '-->', 'crm', ': "uses"'],
+  );
+  assert.equal(text(sources.relationships.get('clerk__serving__orders').statement), 'clerk --> orders');
+  assert.equal(sources.relationships.get('clerk__serving__orders').label, undefined);
+
+  const hint = sources.notes.get('hint');
+  assert.deepEqual(
+    [text(hint.statement), text(hint.text), text(hint.on)],
+    ['note hint "Check" on clerk', '"Check"', 'on clerk'],
+  );
+
+  assert.ok(text(sources.positionsBlock).startsWith('positions {'));
+  assert.ok(text(sources.positionsBlock).endsWith('}'));
+  const position = sources.positions.get('crm');
+  assert.deepEqual(
+    [text(position.statement), text(position.id), text(position.x), text(position.y), text(position.size)],
+    ['crm at 0 0 size 12x8', 'crm', '0', '0', 'size 12x8'],
+  );
+  // The note sits on an element, so the model ignores its position, but the statement is still there to edit.
+  assert.equal(
+    model.positions.some(({ id }) => id === 'hint'),
+    false,
+  );
+  assert.equal(text(sources.positions.get('hint').statement), 'hint at 1 1');
+  const anchor = sources.anchors.get('reads');
+  assert.deepEqual(
+    [text(anchor.statement), text(anchor.from), text(anchor.to)],
+    ['reads from R to L', 'from R', 'to L'],
+  );
+  const shorthandAnchor = sources.anchors.get('clerk__serving__crm');
+  assert.deepEqual(
+    [text(shorthandAnchor.statement), shorthandAnchor.from, text(shorthandAnchor.to)],
+    ['clerk --> crm to T', undefined, 'to T'],
+  );
+  assert.equal(sources.anchors.has('clerk__serving__orders'), false);
+});
+
+test('returns sources only with a model, and without a positions block leaves its parts out', () => {
+  const invalid = validateArchiMate('archimate-beta\n  element businessRole clerk ""');
+  assert.equal(invalid.model, undefined);
+  assert.equal(invalid.sources, undefined);
+
+  const { sources } = validateArchiMate('archimate-beta\n  element businessRole clerk "Clerk"');
+  assert.equal(sources.positionsBlock, undefined);
+  assert.equal(sources.positions.size, 0);
+  assert.equal(sources.anchors.size, 0);
+  assert.deepEqual(sources.elements.get('clerk').statement, {
+    line: 2,
+    column: 3,
+    endLine: 2,
+    endColumn: 37,
+    offset: 17,
+    endOffset: 51,
+  });
+});
+
+test('exports the grid geometry that positions refer to', async () => {
+  const language = await import('../dist/language.js');
+  assert.equal(language.gridUnit, 20);
+  assert.equal(language.layoutPadding, 24);
+});

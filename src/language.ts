@@ -3,12 +3,24 @@ export type {
   ArchiMateDiagnostic,
   ArchiMateErrorCode,
   ArchiMateErrorDiagnostic,
+  ArchiMateAnchorSource,
+  ArchiMateDescriptionSource,
+  ArchiMateElementSource,
+  ArchiMateLinkSource,
+  ArchiMateLongFormRelationshipSource,
+  ArchiMateNoteSource,
   ArchiMateParseOptions,
+  ArchiMatePositionSource,
+  ArchiMateRelationshipSource,
+  ArchiMateShorthandRelationshipSource,
+  ArchiMateSourceMap,
   ArchiMateSourceRange,
+  ArchiMateSourceSpan,
   ArchiMateValidationResult,
   ArchiMateWarningCode,
   ArchiMateWarningDiagnostic,
 } from './archimate/parser.js';
+export { gridUnit, layoutPadding } from './archimate/grid.js';
 export { elementTypes, getElementType, relationshipNames, relationshipTypes } from './archimate/catalogue.js';
 export type {
   AccessMode,

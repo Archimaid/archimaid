@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { gridUnit, layoutPadding } from '../../dist/language.js';
 import { withMermaidPage } from './helpers.mjs';
 
 async function checkNestedNotes(layout) {
@@ -152,5 +153,40 @@ note attached "A note that is wider than the nested element" on suite
       };
     }, source);
     assert.deepEqual(geometry, { titleFits: true, noteFits: true });
+  });
+});
+
+test('custom layout grids a nested element from the header height its container reports', async () => {
+  const source = `archimate-beta
+layout custom
+element applicationComponent suite "Customer relationship management suite with a long wrapping name"
+element applicationComponent inner "Order management"
+nest inner in suite
+note pinned "Owned by the sales platform team" on suite
+positions {
+  suite at 2 1 size 20x12
+  inner at 3 2
+}`;
+  await withMermaidPage(async (page) => {
+    const geometry = await page.evaluate(async (source) => {
+      const mermaid = await globalThis.archimateHost;
+      const { svg } = await mermaid.render('custom-header-height', source);
+      const container = document.createElement('div');
+      container.innerHTML = svg;
+      document.body.append(container);
+      const offset = (id) => {
+        const { e, f } = container
+          .querySelector(`[data-archimate-element="${id}"]`)
+          .transform.baseVal.consolidate().matrix;
+        return { x: e, y: f };
+      };
+      const header = container.querySelector('[data-archimate-element="suite"]').dataset.archimateHeaderHeight;
+      const result = { suite: offset('suite'), inner: offset('inner'), header: Number(header) };
+      container.remove();
+      return result;
+    }, source);
+    assert.ok(geometry.header > 54, `a wrapped name should grow the header, got ${geometry.header}`);
+    assert.equal(geometry.inner.x - geometry.suite.x, layoutPadding + 3 * gridUnit);
+    assert.equal(geometry.inner.y - geometry.suite.y, geometry.header + layoutPadding + 2 * gridUnit);
   });
 });

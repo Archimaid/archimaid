@@ -1,6 +1,6 @@
+import { gridUnit } from '../archimate/grid.js';
 import type { Arrangement, MeasuredNode, PlacedNode } from './architectureLayout.js';
 
-export const gridUnit = 20;
 // The same gap that separates cells in architecture layout keeps fallback elements apart from pinned ones.
 const fallbackGap = 72;
 

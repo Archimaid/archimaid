@@ -4,6 +4,7 @@ import { blankFrontmatter } from './frontmatter.js';
 import { describeSyntaxError, parseDeclarations } from './grammar.js';
 import { describeLexicalError, lexer } from './lexer.js';
 import type { ArchiMateModel } from './model.js';
+import { locateSources } from './sources.js';
 import { validateDeclarations } from './validate.js';
 
 export { ArchiMateError } from './diagnostics.js';
@@ -17,6 +18,19 @@ export type {
   ArchiMateWarningDiagnostic,
 } from './diagnostics.js';
 export { relationshipConnectors } from './lexer.js';
+export type {
+  ArchiMateAnchorSource,
+  ArchiMateDescriptionSource,
+  ArchiMateElementSource,
+  ArchiMateLinkSource,
+  ArchiMateLongFormRelationshipSource,
+  ArchiMateNoteSource,
+  ArchiMatePositionSource,
+  ArchiMateRelationshipSource,
+  ArchiMateShorthandRelationshipSource,
+  ArchiMateSourceMap,
+  ArchiMateSourceSpan,
+} from './sources.js';
 
 export interface ArchiMateParseOptions {
   readonly lineOffset?: number;
@@ -55,8 +69,15 @@ function analyzeArchiMate(source: string, options: ArchiMateParseOptions): Archi
     diagnostics.error('SYNTAX_ERROR', syntaxError.token, describeSyntaxError(syntaxError, tokenized.tokens));
     return { diagnostics: diagnostics.diagnostics };
   }
-  const model = validateDeclarations(grammar.declarations, diagnostics);
-  return { ...(model && { model }), diagnostics: diagnostics.diagnostics };
+  const validated = validateDeclarations(grammar.declarations, diagnostics);
+  if (!validated) return { diagnostics: diagnostics.diagnostics };
+  // Everything removed before the first token, so token offsets plus this are offsets into the source.
+  const offsetShift = source.length - text.length;
+  return {
+    model: validated.model,
+    sources: locateSources(validated.statements, { lineOffset: options.lineOffset ?? 0, offsetShift }),
+    diagnostics: diagnostics.diagnostics,
+  };
 }
 
 /**
@@ -64,9 +85,9 @@ function analyzeArchiMate(source: string, options: ArchiMateParseOptions): Archi
  * checks stop at the first problem because later tokens cannot be interpreted reliably.
  */
 export function validateArchiMate(source: string, options: ArchiMateParseOptions = {}): ArchiMateValidationResult {
-  const { model, diagnostics } = analyzeArchiMate(source, options);
+  const { diagnostics, ...result } = analyzeArchiMate(source, options);
   const sorted = diagnostics.toSorted((left, right) => left.line - right.line || left.column - right.column);
-  return { ...(model && { model }), diagnostics: sorted };
+  return { ...result, diagnostics: sorted };
 }
 
 export function parseArchiMate(source: string, options: ArchiMateParseOptions = {}): ArchiMateModel {

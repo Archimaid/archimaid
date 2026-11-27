@@ -3,7 +3,7 @@ import type { getElementType, getRelationshipNotation } from '../../archimate/ca
 import type { ArchiMateModel, ArchiMateNote } from '../../archimate/model.js';
 import { markerExtent } from '../geometry.js';
 
-export const layoutPadding = 24;
+export { layoutPadding } from '../../archimate/grid.js';
 export const strokeGutter = 2;
 // Allow for the longest marker and its outline on low-padding diagrams.
 export const markerReach = markerExtent;

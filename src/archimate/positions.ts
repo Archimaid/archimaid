@@ -38,6 +38,13 @@ export interface ValidatedPositions {
   readonly anchors: readonly ArchiMateAnchor[];
 }
 
+// The statements behind the validated positions, keyed by element, note or relationship ID.
+export interface PositionStatements {
+  readonly block: PositionsDeclaration | undefined;
+  readonly positions: ReadonlyMap<string, ElementPositionEntry>;
+  readonly anchors: ReadonlyMap<string, AnchorEntry>;
+}
+
 function lastToken(entry: ElementPositionEntry | AnchorEntry): IToken {
   return entry.kind === 'elementPosition'
     ? (entry.size ?? entry.y)
@@ -165,7 +172,11 @@ function resolveAnchoredRelationship(entry: AnchorEntry, context: PositionContex
   return found;
 }
 
-function readAnchor(entry: AnchorEntry, context: PositionContext, anchored: Set<string>): ArchiMateAnchor | undefined {
+function readAnchor(
+  entry: AnchorEntry,
+  context: PositionContext,
+  anchored: Map<string, AnchorEntry>,
+): ArchiMateAnchor | undefined {
   const source = readSide(entry.sourceSide, context.report);
   const target = readSide(entry.targetSide, context.report);
   const relationship = resolveAnchoredRelationship(entry, context);
@@ -174,7 +185,7 @@ function readAnchor(entry: AnchorEntry, context: PositionContext, anchored: Set<
     context.report('DUPLICATE_DECLARATION', entry.subject, `Anchors are already set for "${relationship.id}".`);
     return undefined;
   }
-  anchored.add(relationship.id);
+  anchored.set(relationship.id, entry);
   if ((entry.sourceSide && !source) || (entry.targetSide && !target)) return undefined;
   return { relationship: relationship.id, ...(source && { source }), ...(target && { target }) };
 }
@@ -287,7 +298,7 @@ function warnOnCustomLayout(
 }
 
 // The block is checked in every layout, so it stays correct while a diagram uses automatic layout.
-export function validatePositions(context: PositionContext): ValidatedPositions {
+export function validatePositions(context: PositionContext): ValidatedPositions & { statements: PositionStatements } {
   const [block, ...repeated] = context.blocks;
   for (const extra of repeated) {
     context.report('DUPLICATE_DECLARATION', extra.keyword, 'Positions are already declared.');
@@ -301,10 +312,10 @@ export function validatePositions(context: PositionContext): ValidatedPositions 
         'Custom layout has no positions block, so architecture layout places every element.',
       );
     }
-    return { positions: [], anchors: [] };
+    return { positions: [], anchors: [], statements: { block, positions: new Map(), anchors: new Map() } };
   }
   const placed = new Map<string, ElementPositionEntry>();
-  const anchored = new Set<string>();
+  const anchored = new Map<string, AnchorEntry>();
   const positions: ArchiMatePosition[] = [];
   const anchors: ArchiMateAnchor[] = [];
   for (const entry of block.entries) {
@@ -317,5 +328,5 @@ export function validatePositions(context: PositionContext): ValidatedPositions 
     }
   }
   if (context.layout === 'custom') warnOnCustomLayout(context, positions, placed);
-  return { positions, anchors };
+  return { positions, anchors, statements: { block, positions: placed, anchors: anchored } };
 }
