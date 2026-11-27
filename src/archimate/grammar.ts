@@ -259,36 +259,48 @@ export type Declaration =
   | { kind: 'direction'; value: IToken }
   | { kind: 'layout'; value: IToken }
   | { kind: 'metadata'; value: IToken }
-  | { kind: 'element'; type: IToken; id: IToken; name: IToken }
-  | { kind: 'description'; id: IToken; value: IToken }
-  | { kind: 'note'; id: IToken; text: IToken; anchor?: IToken }
+  | { kind: 'element'; bounds: TokenBounds; type: IToken; id: IToken; name: IToken }
+  | { kind: 'description'; bounds: TokenBounds; id: IToken; value: IToken }
+  | { kind: 'note'; bounds: TokenBounds; id: IToken; text: IToken; on?: IToken; anchor?: IToken }
   | { kind: 'nesting'; child: IToken; parent: IToken; relationshipId?: IToken }
-  | { kind: 'click'; id: IToken; url: IToken; tooltip?: IToken; target?: IToken }
+  | { kind: 'click'; bounds: TokenBounds; id: IToken; url: IToken; tooltip?: IToken; target?: IToken }
   | PositionsDeclaration
   | RelationshipDeclaration
   | ConnectorDeclaration;
 
+// The first and last token of a statement, including the block of an element.
+export interface TokenBounds {
+  readonly first: IToken;
+  readonly last: IToken;
+}
+
 export interface RelationshipDeclaration {
   kind: 'relationship';
+  bounds: TokenBounds;
   type: IToken;
   id: IToken;
   source: IToken;
   target: IToken;
+  accessKeyword?: IToken;
   mode?: IToken;
   directed?: IToken;
+  labelMarker?: IToken;
   label?: IToken;
 }
 
 export interface ConnectorDeclaration {
   kind: 'connector';
+  bounds: TokenBounds;
   source: IToken;
   connector: IToken;
   target: IToken;
+  labelMarker?: IToken;
   label?: IToken;
 }
 
 export interface PositionsDeclaration {
   kind: 'positions';
+  bounds: TokenBounds;
   keyword: IToken;
   entries: PositionEntry[];
 }
@@ -297,19 +309,24 @@ export type PositionEntry = ElementPositionEntry | AnchorEntry;
 
 export interface ElementPositionEntry {
   kind: 'elementPosition';
+  bounds: TokenBounds;
   id: IToken;
   x: IToken;
   y: IToken;
+  sizeKeyword?: IToken;
   size?: IToken;
 }
 
 // The relationship is named by its ID, or by its endpoints and connector as in the shorthand.
 export interface AnchorEntry {
   kind: 'anchor';
+  bounds: TokenBounds;
   subject: IToken;
   connector?: IToken;
   target?: IToken;
+  fromKeyword?: IToken;
   sourceSide?: IToken;
+  toKeyword?: IToken;
   targetSide?: IToken;
 }
 
@@ -317,6 +334,26 @@ function requiredToken(ctx: Context, name: string): IToken {
   const item = ctx[name]?.[0];
   if (!item || !('tokenType' in item)) throw new Error('Incomplete ArchiMate parse tree.');
   return item;
+}
+
+function boundsOf(ctx: Context): TokenBounds {
+  let first: IToken | undefined;
+  let last: IToken | undefined;
+  const visit = (children: Context): void => {
+    for (const items of Object.values(children)) {
+      for (const item of items) {
+        if ('children' in item) {
+          visit(item.children);
+          continue;
+        }
+        if (!first || item.startOffset < first.startOffset) first = item;
+        if (!last || item.startOffset > last.startOffset) last = item;
+      }
+    }
+  };
+  visit(ctx);
+  if (!first || !last) throw new Error('Empty ArchiMate statement.');
+  return { first, last };
 }
 
 const parser = new ArchiMateParser();
@@ -354,6 +391,7 @@ class DeclarationVisitor extends BaseVisitor {
     const parent = requiredToken(ctx, 'id');
     const declared: Declaration = {
       kind: 'element',
+      bounds: boundsOf(ctx),
       type: requiredToken(ctx, 'type'),
       id: parent,
       name: requiredToken(ctx, 'name'),
@@ -375,6 +413,7 @@ class DeclarationVisitor extends BaseVisitor {
   clickStatement(ctx: Context): Declaration {
     return {
       kind: 'click',
+      bounds: boundsOf(ctx),
       id: requiredToken(ctx, 'id'),
       url: requiredToken(ctx, 'url'),
       ...(ctx.tooltip && { tooltip: requiredToken(ctx, 'tooltip') }),
@@ -383,29 +422,36 @@ class DeclarationVisitor extends BaseVisitor {
   }
 
   descriptionStatement(ctx: Context): Declaration {
-    return { kind: 'description', id: requiredToken(ctx, 'id'), value: requiredToken(ctx, 'value') };
+    return {
+      kind: 'description',
+      bounds: boundsOf(ctx),
+      id: requiredToken(ctx, 'id'),
+      value: requiredToken(ctx, 'value'),
+    };
   }
 
   relationshipStatement(ctx: Context): Declaration {
     return {
       kind: 'relationship',
+      bounds: boundsOf(ctx),
       type: requiredToken(ctx, 'type'),
       id: requiredToken(ctx, 'id'),
       source: requiredToken(ctx, 'source'),
       target: requiredToken(ctx, 'target'),
-      ...(ctx.mode && { mode: requiredToken(ctx, 'mode') }),
+      ...(ctx.mode && { accessKeyword: requiredToken(ctx, 'Access'), mode: requiredToken(ctx, 'mode') }),
       ...(ctx.Directed && { directed: requiredToken(ctx, 'Directed') }),
-      ...(ctx.labelText && { label: requiredToken(ctx, 'labelText') }),
+      ...(ctx.labelText && { labelMarker: requiredToken(ctx, 'Label'), label: requiredToken(ctx, 'labelText') }),
     };
   }
 
   connectorStatement(ctx: Context): Declaration {
     return {
       kind: 'connector',
+      bounds: boundsOf(ctx),
       source: requiredToken(ctx, 'source'),
       connector: requiredToken(ctx, 'connector'),
       target: requiredToken(ctx, 'target'),
-      ...(ctx.labelText && { label: requiredToken(ctx, 'labelText') }),
+      ...(ctx.labelText && { labelMarker: requiredToken(ctx, 'Colon'), label: requiredToken(ctx, 'labelText') }),
     };
   }
 
@@ -416,9 +462,10 @@ class DeclarationVisitor extends BaseVisitor {
   noteStatement(ctx: Context): Declaration {
     return {
       kind: 'note',
+      bounds: boundsOf(ctx),
       id: requiredToken(ctx, 'id'),
       text: requiredToken(ctx, 'text'),
-      ...(ctx.anchor && { anchor: requiredToken(ctx, 'anchor') }),
+      ...(ctx.anchor && { on: requiredToken(ctx, 'On'), anchor: requiredToken(ctx, 'anchor') }),
     };
   }
 
@@ -427,7 +474,7 @@ class DeclarationVisitor extends BaseVisitor {
       if (!('children' in node)) throw new Error('Invalid ArchiMate parse tree.');
       return this.positionEntry(node.children);
     });
-    return { kind: 'positions', keyword: requiredToken(ctx, 'Positions'), entries };
+    return { kind: 'positions', bounds: boundsOf(ctx), keyword: requiredToken(ctx, 'Positions'), entries };
   }
 
   positionEntry(ctx: Context): PositionEntry {
@@ -435,26 +482,28 @@ class DeclarationVisitor extends BaseVisitor {
     if (ctx.x) {
       return {
         kind: 'elementPosition',
+        bounds: boundsOf(ctx),
         id: subject,
         x: requiredToken(ctx, 'x'),
         y: requiredToken(ctx, 'y'),
-        ...(ctx.size && { size: requiredToken(ctx, 'size') }),
+        ...(ctx.size && { sizeKeyword: requiredToken(ctx, 'Size'), size: requiredToken(ctx, 'size') }),
       };
     }
     const sides = ctx.anchorSides?.[0];
     if (!sides || !('children' in sides)) throw new Error('Incomplete ArchiMate anchor.');
     return {
       kind: 'anchor',
+      bounds: boundsOf(ctx),
       subject,
       ...(ctx.connector && { connector: requiredToken(ctx, 'connector'), target: requiredToken(ctx, 'target') }),
       ...this.anchorSides(sides.children),
     };
   }
 
-  anchorSides(ctx: Context): Pick<AnchorEntry, 'sourceSide' | 'targetSide'> {
+  anchorSides(ctx: Context): Pick<AnchorEntry, 'fromKeyword' | 'sourceSide' | 'toKeyword' | 'targetSide'> {
     return {
-      ...(ctx.sourceSide && { sourceSide: requiredToken(ctx, 'sourceSide') }),
-      ...(ctx.targetSide && { targetSide: requiredToken(ctx, 'targetSide') }),
+      ...(ctx.sourceSide && { fromKeyword: requiredToken(ctx, 'From'), sourceSide: requiredToken(ctx, 'sourceSide') }),
+      ...(ctx.targetSide && { toKeyword: requiredToken(ctx, 'To'), targetSide: requiredToken(ctx, 'targetSide') }),
     };
   }
 

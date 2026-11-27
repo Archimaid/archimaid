@@ -53,7 +53,7 @@ function drawText(
 
 function drawNode(
   graph: SVGElement,
-  { element, type, notation, label }: NodeAppearance,
+  { element, type, notation, label, headerHeight }: NodeAppearance,
   box: PositionedNode,
   compound: boolean,
   palette: PaletteColours,
@@ -72,6 +72,8 @@ function drawNode(
     transform: `translate(${x} ${y})`,
     'data-archimate-element': element.id,
     'data-archimate-type': element.type,
+    // Editors place nested elements below the header, as custom layout does.
+    'data-archimate-header-height': headerHeight,
     role: 'graphics-symbol',
     'aria-roledescription': type.name,
     'aria-label': element.name,

@@ -165,7 +165,7 @@ Custom layout replaces only placement. It converts positions to pixels, resolves
 - `positions { … }` uses the same brace block as element blocks. It is allowed once, at the top level only.
 - Inside the block a line starts with an identifier and continues with `at` (element), a connector (relationship by endpoints), or `from` or `to` (relationship by ID), which keeps the grammar LL(2).
 - `custom` joins the accepted values of `layout`.
-- Every declaration in the block carries a source range, so Designer can rewrite the one line a drag changes.
+- Every declaration in the block carries a source range, so Designer can rewrite the one line a drag changes. Released in 0.2.2 as `sources` in the `validateArchiMate` result.
 
 ## Alternatives considered
 
@@ -180,7 +180,7 @@ Custom layout replaces only placement. It converts positions to pixels, resolves
 ## Adoption path
 
 1. Approve this syntax.
-2. Parser, model and validation, with source ranges on all declarations.
+2. Parser, model and validation, with source ranges on all declarations (ranges released in 0.2.2).
 3. Custom placement in the renderer, using the existing router.
 4. Reference docs, an example, and the agent guidance.
 5. Designer writes and edits the block; the playground highlights it.

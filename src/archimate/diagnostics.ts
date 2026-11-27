@@ -1,5 +1,6 @@
 import type { IToken } from 'chevrotain';
 import type { ArchiMateModel } from './model.js';
+import type { ArchiMateSourceMap } from './sources.js';
 
 export type ArchiMateErrorCode =
   | 'LEXICAL_ERROR'
@@ -58,6 +59,8 @@ export type ArchiMateDiagnostic = ArchiMateErrorDiagnostic | ArchiMateWarningDia
 
 export interface ArchiMateValidationResult {
   readonly model?: ArchiMateModel;
+  // Present whenever `model` is.
+  readonly sources?: ArchiMateSourceMap;
   readonly diagnostics: readonly ArchiMateDiagnostic[];
 }
 

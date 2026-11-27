@@ -268,7 +268,17 @@ console.log(model.elements);
 
 Validation errors throw `ArchiMateError` with a code, line, and column. `parseArchiMate` stops at the first error.
 
-For editors and linters, `validateArchiMate(source, options)` returns `{ model, diagnostics }`. It reports every semantic error, and warnings such as `DUPLICATE_RELATIONSHIP`, each with `code`, `severity`, `message`, `line`, `column`, `endLine` and `endColumn`. Lines and columns are 1-based and `endColumn` is exclusive. `model` is present only when there are no errors.
+For editors and linters, `validateArchiMate(source, options)` returns `{ model, sources, diagnostics }`. It reports every semantic error, and warnings such as `DUPLICATE_RELATIONSHIP`, each with `code`, `severity`, `message`, `line`, `column`, `endLine` and `endColumn`. Lines and columns are 1-based and `endColumn` is exclusive. `model` and `sources` are present only when there are no errors.
+
+`sources` tells an editor where each part of the model is written, so it can change the text without searching it. Its `elements`, `relationships`, `notes`, `positions` and `anchors` maps are keyed by ID; shorthand relationships use their generated IDs, positions their element or note ID, and anchors their relationship ID. Each entry has a `statement` span and spans for its parts, such as an element's `name` or a relationship's `source`, `target` and `label`. A span has the same line and column fields plus `offset` and `endOffset`, 0-based and exclusive, so `source.slice(span.offset, span.endOffset)` is its text, even after a byte order mark or frontmatter.
+
+```js
+const { sources } = validateArchiMate(source);
+const name = sources.elements.get('crm').name;
+const renamed = source.slice(0, name.offset) + '"Customer data platform"' + source.slice(name.endOffset);
+```
+
+`gridUnit` (20 pixels) and `layoutPadding` (24 pixels) describe the grid that custom layout positions refer to. A nested element's grid starts `layoutPadding` inside its container's left edge and below its header; each rendered element's SVG group carries that header height in `data-archimate-header-height`.
 
 The same entry point exports `elementTypes`, `relationshipTypes` and `relationshipNames` for tooling that needs the catalogue. [Type reference](docs/reference.md)
 

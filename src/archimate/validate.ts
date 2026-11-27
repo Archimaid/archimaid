@@ -18,6 +18,7 @@ import type {
 import { validateNesting } from './nesting.js';
 import type { NestingDeclaration } from './nesting.js';
 import { validatePositions, type ValidatedPositions } from './positions.js';
+import type { SourceStatements } from './sources.js';
 import { withSuggestion } from './suggestions.js';
 
 type MetadataKey = 'title' | 'accTitle' | 'accDescription';
@@ -529,11 +530,16 @@ function buildModel(
   };
 }
 
+export interface ValidatedDeclarations {
+  readonly model: ArchiMateModel;
+  readonly statements: SourceStatements;
+}
+
 // The checks run in a fixed order because parseArchiMate throws the first error found.
 export function validateDeclarations(
   declarations: Declaration[],
   diagnostics: DiagnosticCollector,
-): ArchiMateModel | undefined {
+): ValidatedDeclarations | undefined {
   const report: Report = (code, token, message) => {
     diagnostics.error(code, token, message);
   };
@@ -563,7 +569,7 @@ export function validateDeclarations(
     report,
   });
   const elements = buildElements(collected, report);
-  const { positions, anchors } = validatePositions({
+  const { positions, anchors, statements } = validatePositions({
     blocks: collected.positions,
     layout: collected.settings.layout,
     layoutToken: collected.settings.layoutToken,
@@ -574,5 +580,20 @@ export function validateDeclarations(
     report,
   });
   if (diagnostics.hasErrors) return undefined;
-  return buildModel(collected.settings, { elements, relationships, notes, nesting, positions, anchors });
+  return {
+    model: buildModel(collected.settings, { elements, relationships, notes, nesting, positions, anchors }),
+    // Without errors every collected statement made it into the model, in the same order.
+    statements: {
+      elements: collected.elements,
+      descriptions: collected.descriptions,
+      clicks: collected.clicks,
+      relationships: collected.relationships.map((statement, index) => {
+        const relationship = relationships[index];
+        if (!relationship) throw new Error('A relationship statement has no relationship in the model.');
+        return { id: relationship.id, statement };
+      }),
+      notes: collected.notes,
+      positions: statements,
+    },
+  };
 }
